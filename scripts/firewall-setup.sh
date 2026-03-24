@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # =============================================
-# Firewall (UFW) setup
+# Firewall setup (firewalld / ufw)
+# Auto-detect: Rocky/RHEL → firewalld, Debian/Ubuntu → ufw
 # =============================================
 
 show_help() {
@@ -11,33 +12,74 @@ show_help() {
     echo "  firewall status    Dabartinis statusas"
 }
 
-firewall_setup() {
+PORTS_TCP=(22 80 443 25 587 993)
+PORTS_DESC=("SSH" "HTTP" "HTTPS" "SMTP" "SMTP Submission" "IMAP SSL")
+
+# =============================================
+# firewalld (Rocky Linux, RHEL, CentOS)
+# =============================================
+firewalld_setup() {
+    if ! command -v firewall-cmd &>/dev/null; then
+        echo "Diegiu firewalld..."
+        dnf install -y -q firewalld
+    fi
+
+    systemctl enable --now firewalld 2>/dev/null || true
+
+    echo "=== Firewall setup (firewalld) ==="
+    echo ""
+
+    # Default zone — drop (atmetam viską)
+    firewall-cmd --set-default-zone=drop --permanent 2>/dev/null || true
+
+    # Leidžiam portus
+    for i in "${!PORTS_TCP[@]}"; do
+        echo "Leidžiu ${PORTS_DESC[$i]} (${PORTS_TCP[$i]}/tcp)..."
+        firewall-cmd --permanent --add-port="${PORTS_TCP[$i]}/tcp" 2>/dev/null || true
+    done
+
+    # Docker Swarm (jei ateityje bus kelios nodes)
+    # firewall-cmd --permanent --add-port=2377/tcp
+    # firewall-cmd --permanent --add-port=7946/tcp
+    # firewall-cmd --permanent --add-port=7946/udp
+    # firewall-cmd --permanent --add-port=4789/udp
+
+    # Docker interface — leidžiam vidinį traffic
+    firewall-cmd --permanent --zone=trusted --add-interface=docker0 2>/dev/null || true
+    firewall-cmd --permanent --zone=trusted --add-interface=docker_gwbridge 2>/dev/null || true
+
+    # Masquerade — reikia Docker networking
+    firewall-cmd --permanent --add-masquerade 2>/dev/null || true
+
+    firewall-cmd --reload
+    echo ""
+    echo "=== Firewall įjungtas ==="
+    firewall-cmd --list-all
+}
+
+firewalld_status() {
+    firewall-cmd --list-all
+}
+
+# =============================================
+# ufw (Debian, Ubuntu)
+# =============================================
+ufw_setup() {
     if ! command -v ufw &>/dev/null; then
         echo "Diegiu UFW..."
         apt-get update -qq && apt-get install -y -qq ufw
     fi
 
-    echo "=== Firewall setup ==="
+    echo "=== Firewall setup (ufw) ==="
     echo ""
 
-    # Default policy
     ufw default deny incoming
     ufw default allow outgoing
 
-    # SSH — VISADA pirmas!
-    echo "Leidžiu SSH (22)..."
-    ufw allow 22/tcp comment "SSH"
-
-    # HTTP/HTTPS (Traefik)
-    echo "Leidžiu HTTP/HTTPS (80, 443)..."
-    ufw allow 80/tcp comment "HTTP"
-    ufw allow 443/tcp comment "HTTPS"
-
-    # Mail portai
-    echo "Leidžiu Mail portus (25, 587, 993)..."
-    ufw allow 25/tcp comment "SMTP"
-    ufw allow 587/tcp comment "SMTP Submission"
-    ufw allow 993/tcp comment "IMAP SSL"
+    for i in "${!PORTS_TCP[@]}"; do
+        echo "Leidžiu ${PORTS_DESC[$i]} (${PORTS_TCP[$i]}/tcp)..."
+        ufw allow "${PORTS_TCP[$i]}/tcp" comment "${PORTS_DESC[$i]}"
+    done
 
     # Docker Swarm (jei ateityje bus kelios nodes)
     # ufw allow 2377/tcp comment "Swarm management"
@@ -48,7 +90,7 @@ firewall_setup() {
     echo ""
     echo "SVARBU: Prieš įjungiant firewall, patikrink kad SSH veikia!"
     echo ""
-    read -p "Įjungti firewall? (yes/no): " CONFIRM
+    read -t 30 -p "Įjungti firewall? (yes/no): " CONFIRM || CONFIRM="no"
 
     if [ "$CONFIRM" = "yes" ]; then
         ufw --force enable
@@ -60,12 +102,47 @@ firewall_setup() {
     fi
 }
 
-firewall_status() {
-    if command -v ufw &>/dev/null; then
-        ufw status verbose
+ufw_status() {
+    ufw status verbose
+}
+
+# =============================================
+# Auto-detect ir dispatch
+# =============================================
+detect_firewall() {
+    if command -v firewall-cmd &>/dev/null || [ -f /etc/redhat-release ]; then
+        echo "firewalld"
+    elif command -v ufw &>/dev/null || command -v apt-get &>/dev/null; then
+        echo "ufw"
     else
-        echo "UFW neįdiegtas. Paleisk: ./server.sh firewall setup"
+        echo "unknown"
     fi
+}
+
+firewall_setup() {
+    local FW
+    FW=$(detect_firewall)
+    case "$FW" in
+        firewalld) firewalld_setup ;;
+        ufw)       ufw_setup ;;
+        *)
+            echo "Klaida: neatpažinta OS. Palaikomi: Rocky/RHEL (firewalld), Debian/Ubuntu (ufw)"
+            exit 1
+            ;;
+    esac
+}
+
+firewall_status() {
+    local FW
+    FW=$(detect_firewall)
+    case "$FW" in
+        firewalld) firewalld_status ;;
+        ufw)       ufw_status ;;
+        *)
+            echo "Firewall nerastas"
+            exit 1
+            ;;
+    esac
 }
 
 case "${1:-}" in

@@ -2,14 +2,14 @@
 
 ## What is this
 
-Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-node swarm (4 vCPU, 16GB RAM, 160GB SSD).
+Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-node swarm on Rocky Linux 10 (KVM), 4 vCPU, 16GB RAM, 160GB SSD, 1Gbps.
 
 ## Architecture
 
 Three Docker Swarm stacks sharing two overlay networks (`traefik-public`, `internal`):
 
-- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer
-- **monitoring** — Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, postgres-exporter, Dozzle
+- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium)
+- **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
 - **mail** — docker-mailserver, Roundcube, traefik-certs-dumper
 
 Projects live in `projects/<name>/` — each is an independent Swarm stack with optional Varnish cache sidecar.
@@ -19,10 +19,18 @@ Projects live in `projects/<name>/` — each is an independent Swarm stack with 
 - **Single PostgreSQL instance** shared by all projects. Each project gets an isolated DB user with `REVOKE ALL FROM PUBLIC` + `CONNECTION LIMIT`. Create via `./scripts/db-create.sh`.
 - **Varnish per-project** (not centralized) — each project controls its own cache rules via VCL. File-based storage on SSD instead of S3.
 - **Two overlay networks only**: `traefik-public` for HTTP routing, `internal` for everything else (DB, Redis, metrics, inter-service).
-- **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Alertmanager, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
+- **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Alertmanager, Playwright, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
 - **Rate limiting** (100 req/s, burst 50) on public services (Roundcube, projects) via Traefik `rateLimit` middleware, also defined on Traefik.
 - **Alertmanager** sends alerts via email through the internal docker-mailserver (port 25, no auth, `PERMIT_DOCKER=network`). Recipients: sarunas.pm@gmail.com, cetex.pm@gmail.com.
 - **`DOMAIN` env var** is the single source for all web-facing hostnames. `MAIL_DOMAIN` was removed to avoid mismatches — everything uses `DOMAIN`.
+- **Playwright** (browserless/chromium) is a shared headless browser service. Projects connect via `ws://core_playwright:3000?token=TOKEN`. Token auth via `PLAYWRIGHT_TOKEN` env var.
+
+## OS: Rocky Linux 10
+
+- Uses `dnf` (not `apt-get`), `firewalld` (not `ufw`), `dnf-automatic` (not `unattended-upgrades`)
+- SELinux enabled by default — `setup.sh` configures Docker access via `setsebool` and `chcon`
+- `firewall-setup.sh` auto-detects OS and uses `firewalld` or `ufw` accordingly
+- Docker installed via `dnf install docker-ce` (requires Docker CE repo)
 
 ## Cross-stack service naming
 
@@ -30,6 +38,7 @@ In Docker Swarm, services from different stacks communicate via external overlay
 - `core_postgresql` — PostgreSQL from any stack
 - `core_redis` — Redis from any stack
 - `core_traefik` — Traefik (for Prometheus metrics scraping on port 8082)
+- `core_playwright` — Headless browser from any stack
 
 Within the same stack, use just `<service>` (e.g., `prometheus` can reach `node-exporter` directly).
 
@@ -39,11 +48,12 @@ All in `.env` (copied from `.env.example`). Key vars:
 - `DOMAIN` — base domain, used for all Traefik routing and SSL
 - `ADMIN_WHITELIST_IPS` — comma-separated CIDR list for admin tool access
 - `POSTGRES_USER/PASSWORD` — admin DB credentials
+- `PLAYWRIGHT_TOKEN` — API token for browserless/chromium
 - Service-specific DB passwords: `ROUNDCUBE_DB_PASSWORD`, `GRAFANA_DB_PASSWORD`, `POSTGRES_EXPORTER_PASSWORD`
 
 ## Deploy mechanism
 
-`./deploy.sh <stack>` does: `cd <stack>/ && source ../.env && docker stack deploy -c docker-compose.yml <stack>`. Relative config file paths in compose files are resolved relative to the stack directory.
+`./deploy.sh <stack>` does: `cd <stack>/ && source ../.env && docker stack deploy -c docker-compose.yml <stack>`. Checks for `.env` existence before sourcing. Relative config file paths in compose files are resolved relative to the stack directory.
 
 ## Scripts
 
@@ -53,12 +63,18 @@ All in `scripts/`. Main entry point is `./server.sh` which routes subcommands to
 
 Custom `postgresql.conf` mounted via Swarm config. Tuned for 16GB RAM: `shared_buffers=4GB`, `effective_cache_size=12GB`, `work_mem=64MB`. Loaded via `postgres -c config_file=/etc/postgresql/postgresql.conf`.
 
+## Memory budget
+
+Total limits: ~10 GB out of 16 GB. ~4 GB free for projects, ~2 GB for OS/Docker.
+
 ## Gotchas
 
 - Docker Swarm does not support `cap_add` in deploy mode — fail2ban is disabled in docker-mailserver
 - Traefik v3 uses `providers.swarm` (not `providers.docker` with swarmMode)
 - Swarm config files are immutable — changing a config requires redeploying the stack (Docker creates a new config version)
 - Health checks use container-level commands (not Swarm-level) — they trigger container restarts, not service rescheduling
+- Rocky Linux has SELinux enabled — Docker volumes need `svirt_sandbox_file_t` context (handled by `setup.sh`)
+- `alertmanager.yml` has hardcoded `smtp_from: alertmanager@example.com` — must be manually updated to match actual domain (Docker configs don't support env var substitution)
 
 ## Language
 

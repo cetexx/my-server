@@ -2,19 +2,27 @@
 
 Docker Swarm paremta infrastruktūra VPS serveriui su daugybe projektų.
 
+## Serveris
+
+- **OS**: Rocky Linux 10 (KVM)
+- **CPU**: 4 x 2.30 GHz
+- **RAM**: 16 GB
+- **Disk**: 160 GB SSD
+- **Tinklas**: 1 Gbps (iki 32 TB/mėn.)
+
 ## Architektūra
 
 ```
-Traefik (reverse proxy, SSL)
-├── core          PostgreSQL 17, Redis, Portainer, Adminer
-├── monitoring    Prometheus, Grafana, Node Exporter, cAdvisor, Dozzle
+Traefik (reverse proxy, SSL, rate limiting)
+├── core          PostgreSQL 17, Redis, Portainer, Adminer, Playwright
+├── monitoring    Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
 ├── mail          docker-mailserver, Roundcube
 └── projects/     Atskiri projektai su Varnish cache
 ```
 
 ## Reikalavimai
 
-- VPS su Linux (Ubuntu/Debian)
+- VPS su Linux (Rocky Linux / RHEL / Ubuntu / Debian)
 - Docker Engine 24+
 - Domenas su DNS nukreiptu į VPS IP (`*.example.com → A → VPS_IP`)
 
@@ -29,37 +37,56 @@ cd /opt/my-server
 cp .env.example .env
 nano .env                           # pakeisk DOMAIN, slaptažodžius
 
-# 3. Pradinis setup
+# 3. Pradinis setup (SELinux, Docker, tinklai, cron)
 sudo ./server.sh setup
 
-# 4. Pridėk savo IP į whitelist
+# 4. Firewall
+sudo ./server.sh firewall setup
+
+# 5. Pridėk savo IP į whitelist
 ./server.sh whitelist myip
 
-# 5. Deploy
+# 6. Deploy
 ./server.sh deploy all
+
+# 7. Sukurk pirmą mail accountą
+./server.sh mail add admin@example.com
+
+# 8. SSH kietinimas (po to kai patikrinai key prisijungimą!)
+sudo ./server.sh ssh add tavo-vardas --docker
+sudo ./server.sh ssh harden
 ```
 
 ## Failų struktūra
 
 ```
 ├── server.sh                          # Pagrindinis valdymo CLI
-├── setup.sh                           # Pradinis setup
+├── setup.sh                           # Pradinis setup (SELinux, Docker, cron)
 ├── deploy.sh                          # Stack deployment
 ├── .env.example                       # Konfigūracijos šablonas
 │
 ├── core/
-│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer
+│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright
 │   ├── init-db/init-databases.sh      # DB inicializacija (Roundcube, Grafana, exporter)
 │   ├── postgresql/postgresql.conf     # PG tuning (4GB shared_buffers, optimizuota 16GB RAM)
 │   └── docker-daemon.json             # Docker daemon konfig (log rotation)
 │
 ├── monitoring/
-│   ├── docker-compose.yml             # Prometheus, Grafana, Node Exporter, cAdvisor, Dozzle
+│   ├── docker-compose.yml             # Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
 │   ├── prometheus/
 │   │   ├── prometheus.yml             # Scrape konfigas
 │   │   └── alert-rules.yml            # Alertai (CPU, RAM, disk, konteineriai, PG, Traefik)
+│   ├── alertmanager/
+│   │   └── alertmanager.yml           # Email notifikacijos
 │   └── grafana/
-│       └── provisioning/datasources/datasource.yml
+│       ├── provisioning/
+│       │   ├── datasources/datasource.yml
+│       │   └── dashboards/dashboards.yml
+│       └── dashboards/                # Auto-provision dashboardai
+│           ├── node-exporter.json     # Serverio metrikos
+│           ├── docker.json            # Konteinerių metrikos
+│           ├── postgresql.json        # DB metrikos
+│           └── traefik.json           # Proxy metrikos
 │
 ├── mail/
 │   └── docker-compose.yml             # docker-mailserver, Roundcube, certs-dumper
@@ -74,11 +101,12 @@ sudo ./server.sh setup
     ├── db-delete.sh                   # Ištrinti DB (su apsauga)
     ├── db-list.sh                     # DB sąrašas
     ├── backup.sh                      # DB ir konfigų backup
+    ├── mail-manage.sh                 # Email accountų valdymas
     ├── ssh-manage.sh                  # SSH vartotojų valdymas
     ├── whitelist.sh                   # Admin IP whitelist
-    ├── firewall-setup.sh              # UFW firewall
+    ├── firewall-setup.sh              # Firewall (firewalld / ufw)
     ├── status.sh                      # Serverio statusas
-    ├── cron-setup.sh                  # Cron job instaliation
+    ├── cron-setup.sh                  # Cron job instaliacija
     └── check-certs.sh                 # SSL sertifikatų tikrinimas
 ```
 
@@ -94,6 +122,12 @@ sudo ./server.sh setup
 ./server.sh db list                    # Visos DB, dydžiai, prisijungimai
 ./server.sh db delete my_app           # Trynimas (su apsauga nuo svarbių DB)
 
+# Mail
+./server.sh mail add admin@example.com # Sukurk email accountą
+./server.sh mail list                  # Visi accountai
+./server.sh mail alias info@ admin@    # Email alias
+./server.sh mail dkim setup            # DKIM raktai
+
 # SSH
 sudo ./server.sh ssh add jonas         # Pridėk vartotoją (SSH key iš stdin)
 sudo ./server.sh ssh add jonas --docker  # + Docker prieiga
@@ -104,7 +138,7 @@ sudo ./server.sh ssh harden            # Užkietink (disable password, root logi
 ./server.sh whitelist myip             # Auto-detect ir pridėk savo IP
 ./server.sh whitelist add 1.2.3.4      # Pridėk IP
 ./server.sh whitelist list             # Dabartinis whitelist
-sudo ./server.sh firewall setup        # UFW su reikiamais portais
+sudo ./server.sh firewall setup        # Firewall su reikiamais portais
 ./server.sh certs check                # SSL sertifikatų galiojimas
 
 # Backup
@@ -139,6 +173,19 @@ nano projects/my-app/varnish.vcl
 
 Srautas: `Traefik → Varnish (SSD cache) → App`
 
+## Playwright (headless browser)
+
+Bendras browserless/chromium servisas visiems projektams:
+
+```javascript
+// Prisijungimas iš projekto
+const browser = await chromium.connectOverCDP(
+  `ws://core_playwright:3000?token=${process.env.PLAYWRIGHT_TOKEN}`
+);
+```
+
+REST API: `https://playwright.example.com` (IP whitelist)
+
 ## Tinklai
 
 | Tinklas | Paskirtis |
@@ -159,8 +206,9 @@ Visi stack'ai jungiasi per šiuos du overlay tinklus.
 | Prometheus | `prometheus.example.com` | taip |
 | Dozzle | `logs.example.com` | taip |
 | Alertmanager | `alerts.example.com` | taip |
+| Playwright | `playwright.example.com` | taip |
 | Roundcube | `mail.example.com` | ne (rate limit) |
-| Projektai | `*.example.com` | ne (vieša) |
+| Projektai | `*.example.com` | ne (rate limit) |
 
 ## DNS setup
 
@@ -179,22 +227,31 @@ TXT  example.com    → "v=spf1 mx -all"
 TXT  _dmarc         → "v=DMARC1; p=quarantine"
 ```
 
-DKIM sukonfigūruojamas po docker-mailserver deploy.
+DKIM: `./server.sh mail dkim setup` ir `./server.sh mail dkim show` — sukels DNS TXT įrašą.
 
 ## Saugumas
 
 - **SSH**: tik key-based auth, root login uždraustas, max 3 bandymai
-- **Firewall**: UFW su atidarytais tik reikiamais portais (22, 80, 443, 25, 587, 993)
+- **Firewall**: firewalld (Rocky) / ufw (Ubuntu) su atidarytais tik reikiamais portais (22, 80, 443, 25, 587, 993)
+- **SELinux**: setup.sh automatiškai sukonfigūruoja Docker prieigą (Rocky Linux)
 - **IP Whitelist**: admin tools pasiekiami tik iš leistinų IP
-- **DB izoliacija**: kiekvienas projektas gauna atskirą DB userį su connection limitu, kiti projektai negali pasiekti svetimų DB
+- **DB izoliacija**: kiekvienas projektas gauna atskirą DB userį su connection limitu
 - **SSL**: automatiniai Let's Encrypt sertifikatai per Traefik
 - **Rate limiting**: 100 req/s su burst 50 viešiems servisams per Traefik
-- **Auto updates**: unattended OS security patch'ai
+- **Playwright token**: API prieiga tik su tokenu
+- **Auto updates**: unattended OS security patch'ai (dnf-automatic / unattended-upgrades)
 - **Health checks**: Docker automatiškai restartina numirusius servisus
 
 ## Monitoringas
 
-Prometheus renka metrikas, Grafana vizualizuoja. Sukonfigūruoti alertai:
+Prometheus renka metrikas, Grafana vizualizuoja. 4 auto-provision dashboardai:
+
+- **Serveris** — CPU, RAM, disk, network, I/O, uptime
+- **Docker konteineriai** — CPU/RAM/network per konteinerį
+- **PostgreSQL** — connections, DB dydžiai, cache hit ratio, deadlocks
+- **Traefik** — requests/s, response time, HTTP status codes, error rate
+
+Alertai:
 
 | Alertas | Triggeris |
 |---|---|
@@ -209,7 +266,15 @@ Prometheus renka metrikas, Grafana vizualizuoja. Sukonfigūruoti alertai:
 
 Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
 
-Alertmanager UI: `alerts.example.com` (IP whitelist apsaugotas).
+## Memory alokacija
+
+```
+Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) = 5.5 GB
+Monitoring:  1G (prom) + 512M (grafana) + 256M (cadvisor) + 256M (alertmanager) + 256M (pg-exp) + 256M (dozzle) = 2.5 GB
+Mail:        2G (mailserver) = 2.0 GB
+OS + Docker: ~2 GB
+Laisva:      ~4 GB (projektams)
+```
 
 ## Cron
 

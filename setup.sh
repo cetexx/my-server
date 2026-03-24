@@ -37,6 +37,20 @@ chmod 600 /opt/my-server/traefik/acme/acme.json
 chown -R 472:472 /opt/my-server/grafana/data
 chown -R 65534:65534 /opt/my-server/prometheus/data
 
+# SELinux — Docker volume prieigai (Rocky Linux / RHEL)
+if command -v getenforce &>/dev/null; then
+    echo "Configuring SELinux for Docker..."
+    if [ "$(getenforce)" != "Disabled" ]; then
+        # Leidžiam Docker konteineriam rašyti į host volumes
+        setsebool -P container_manage_cgroup on 2>/dev/null || true
+        # Pridedam SELinux kontekstą data direktorijoms
+        chcon -Rt svirt_sandbox_file_t /opt/my-server/ 2>/dev/null || true
+        echo "  SELinux sukonfigūruotas Docker'iui"
+    else
+        echo "  SELinux išjungtas — praleista"
+    fi
+fi
+
 # Docker daemon config (log rotation, live-restore)
 echo "Configuring Docker daemon..."
 if [ ! -f /etc/docker/daemon.json ]; then
