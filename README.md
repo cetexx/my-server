@@ -158,7 +158,8 @@ Visi stack'ai jungiasi per šiuos du overlay tinklus.
 | Grafana | `grafana.example.com` | taip |
 | Prometheus | `prometheus.example.com` | taip |
 | Dozzle | `logs.example.com` | taip |
-| Roundcube | `mail.example.com` | ne (vieša) |
+| Alertmanager | `alerts.example.com` | taip |
+| Roundcube | `mail.example.com` | ne (rate limit) |
 | Projektai | `*.example.com` | ne (vieša) |
 
 ## DNS setup
@@ -187,6 +188,7 @@ DKIM sukonfigūruojamas po docker-mailserver deploy.
 - **IP Whitelist**: admin tools pasiekiami tik iš leistinų IP
 - **DB izoliacija**: kiekvienas projektas gauna atskirą DB userį su connection limitu, kiti projektai negali pasiekti svetimų DB
 - **SSL**: automatiniai Let's Encrypt sertifikatai per Traefik
+- **Rate limiting**: 100 req/s su burst 50 viešiems servisams per Traefik
 - **Auto updates**: unattended OS security patch'ai
 - **Health checks**: Docker automatiškai restartina numirusius servisus
 
@@ -205,7 +207,9 @@ Prometheus renka metrikas, Grafana vizualizuoja. Sukonfigūruoti alertai:
 | PostgresqlDeadlocks | Aptiktas deadlock |
 | TraefikHighErrorRate | >5% 5xx klaidų |
 
-Alertus galima siųsti į Telegram/email per Grafana notification channels.
+Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
+
+Alertmanager UI: `alerts.example.com` (IP whitelist apsaugotas).
 
 ## Cron
 

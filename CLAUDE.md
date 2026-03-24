@@ -9,7 +9,7 @@ Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-n
 Three Docker Swarm stacks sharing two overlay networks (`traefik-public`, `internal`):
 
 - **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer
-- **monitoring** — Prometheus, Grafana, Node Exporter, cAdvisor, postgres-exporter, Dozzle
+- **monitoring** — Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, postgres-exporter, Dozzle
 - **mail** — docker-mailserver, Roundcube, traefik-certs-dumper
 
 Projects live in `projects/<name>/` — each is an independent Swarm stack with optional Varnish cache sidecar.
@@ -19,7 +19,9 @@ Projects live in `projects/<name>/` — each is an independent Swarm stack with 
 - **Single PostgreSQL instance** shared by all projects. Each project gets an isolated DB user with `REVOKE ALL FROM PUBLIC` + `CONNECTION LIMIT`. Create via `./scripts/db-create.sh`.
 - **Varnish per-project** (not centralized) — each project controls its own cache rules via VCL. File-based storage on SSD instead of S3.
 - **Two overlay networks only**: `traefik-public` for HTTP routing, `internal` for everything else (DB, Redis, metrics, inter-service).
-- **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
+- **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Alertmanager, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
+- **Rate limiting** (100 req/s, burst 50) on public services (Roundcube, projects) via Traefik `rateLimit` middleware, also defined on Traefik.
+- **Alertmanager** sends alerts via email through the internal docker-mailserver (port 25, no auth, `PERMIT_DOCKER=network`). Recipients: sarunas.pm@gmail.com, cetex.pm@gmail.com.
 - **`DOMAIN` env var** is the single source for all web-facing hostnames. `MAIL_DOMAIN` was removed to avoid mismatches — everything uses `DOMAIN`.
 
 ## Cross-stack service naming

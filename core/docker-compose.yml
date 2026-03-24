@@ -48,6 +48,10 @@ services:
         - traefik.enable=true
         # Admin IP whitelist middleware (naudojamas visų admin servisų)
         - traefik.http.middlewares.admin-whitelist.ipallowlist.sourcerange=${ADMIN_WHITELIST_IPS}
+        # Rate limit middleware viešiems servisams (100 req/s, burst 50)
+        - traefik.http.middlewares.rate-limit.ratelimit.average=100
+        - traefik.http.middlewares.rate-limit.ratelimit.burst=50
+        - traefik.http.middlewares.rate-limit.ratelimit.period=1s
         # Dashboard
         - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)
         - traefik.http.routers.traefik-dashboard.entrypoints=websecure

@@ -83,6 +83,7 @@ services:
         - traefik.http.routers.roundcube.rule=Host(`mail.${DOMAIN}`)
         - traefik.http.routers.roundcube.entrypoints=websecure
         - traefik.http.routers.roundcube.tls.certresolver=letsencrypt
+        - traefik.http.routers.roundcube.middlewares=rate-limit
         - traefik.http.services.roundcube.loadbalancer.server.port=80
 
 networks:

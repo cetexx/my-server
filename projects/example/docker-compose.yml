@@ -33,6 +33,7 @@ services:
         - traefik.http.routers.example.rule=Host(`example.${DOMAIN}`)
         - traefik.http.routers.example.entrypoints=websecure
         - traefik.http.routers.example.tls.certresolver=letsencrypt
+        - traefik.http.routers.example.middlewares=rate-limit
         - traefik.http.services.example.loadbalancer.server.port=6081
       resources:
         limits:
