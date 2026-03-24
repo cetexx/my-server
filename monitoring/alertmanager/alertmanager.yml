@@ -1,6 +1,7 @@
 global:
   # Siunčiam per vidinį mail serverį (PERMIT_DOCKER=network leidžia be auth)
   smtp_smarthost: 'mail_mailserver:25'
+  # SVARBU: pakeisk example.com į savo domeną!
   smtp_from: 'alertmanager@example.com'
   smtp_require_tls: false
 

@@ -26,6 +26,11 @@ deploy_stack() {
         return 1
     fi
 
+    if [ ! -f "$SCRIPT_DIR/.env" ]; then
+        echo "Klaida: .env failas nerastas. Paleisk: cp .env.example .env"
+        return 1
+    fi
+
     echo "Deploying stack '$name' iš $path..."
     (
         cd "$SCRIPT_DIR/$path"

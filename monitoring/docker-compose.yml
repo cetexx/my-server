@@ -129,6 +129,11 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
@@ -171,6 +176,11 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
       placement:
         constraints:
           - node.role == manager

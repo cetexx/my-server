@@ -27,7 +27,7 @@ for p in $PROTECTED; do
     fi
 done
 
-read -p "Tikrai ištrinti DB '$DB_NAME' ir userį? (yes/no): " CONFIRM
+read -t 30 -p "Tikrai ištrinti DB '$DB_NAME' ir userį? (yes/no): " CONFIRM || CONFIRM="no"
 if [ "$CONFIRM" != "yes" ]; then
     echo "Atšaukta"
     exit 0
@@ -35,7 +35,7 @@ fi
 
 echo "Trinu '$DB_NAME'..."
 
-docker exec $(docker ps -qf "name=core_postgresql") psql \
+docker exec "$(docker ps -qf 'name=core_postgresql' | head -1)" psql \
     -v ON_ERROR_STOP=1 \
     --username "$POSTGRES_USER" \
     --dbname "$POSTGRES_DB" \

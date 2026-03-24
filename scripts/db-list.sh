@@ -11,7 +11,7 @@ source "$SCRIPT_DIR/../.env"
 echo "=== Duombazės ==="
 echo ""
 
-docker exec $(docker ps -qf "name=core_postgresql") psql \
+docker exec "$(docker ps -qf 'name=core_postgresql' | head -1)" psql \
     --username "$POSTGRES_USER" \
     --dbname "$POSTGRES_DB" \
     -c "

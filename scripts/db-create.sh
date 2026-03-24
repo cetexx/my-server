@@ -42,7 +42,7 @@ DB_PASSWORD=$(openssl rand -base64 24 | tr -d '/+=')
 
 echo "Kuriu duombazę '$DB_NAME'..."
 
-docker exec $(docker ps -qf "name=core_postgresql") psql \
+docker exec "$(docker ps -qf 'name=core_postgresql' | head -1)" psql \
     -v ON_ERROR_STOP=1 \
     --username "$POSTGRES_USER" \
     --dbname "$POSTGRES_DB" \
@@ -58,7 +58,7 @@ docker exec $(docker ps -qf "name=core_postgresql") psql \
     "
 
 # Užrakinam public schema šitoj DB
-docker exec $(docker ps -qf "name=core_postgresql") psql \
+docker exec "$(docker ps -qf 'name=core_postgresql' | head -1)" psql \
     -v ON_ERROR_STOP=1 \
     --username "$POSTGRES_USER" \
     --dbname "$DB_NAME" \

@@ -41,6 +41,11 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
       placement:
         constraints:
           - node.role == manager
@@ -119,7 +124,7 @@ services:
     image: portainer/portainer-ce:2.21.5
     command: -H unix:///var/run/docker.sock
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/system/status"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -145,7 +150,7 @@ services:
   adminer:
     image: adminer:4
     healthcheck:
-      test: ["CMD", "php", "-r", "exit(file_get_contents('http://localhost:8080') === false ? 1 : 0);"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/ > /dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
