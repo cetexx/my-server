@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "=== VPS Docker Swarm Setup ==="
 
 # Check root
@@ -59,7 +62,7 @@ fi
 
 # Cron jobs
 echo "Setting up cron jobs..."
-"$PWD/scripts/cron-setup.sh" 2>/dev/null || echo "  Cron setup nepavyko — paleisk rankiniu būdu: ./scripts/cron-setup.sh"
+"$SCRIPT_DIR/scripts/cron-setup.sh" 2>/dev/null || echo "  Cron setup nepavyko — paleisk rankiniu būdu: ./scripts/cron-setup.sh"
 
 # Check .env
 if [ ! -f .env ]; then

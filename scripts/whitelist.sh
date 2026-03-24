@@ -26,7 +26,11 @@ get_current_ips() {
 save_ips() {
     local NEW_IPS=$1
     if grep -q '^ADMIN_WHITELIST_IPS=' "$ENV_FILE" 2>/dev/null; then
-        sed -i "s|^ADMIN_WHITELIST_IPS=.*|ADMIN_WHITELIST_IPS=${NEW_IPS}|" "$ENV_FILE"
+        # Naudojam awk vietoj sed — saugiau su specialiais simboliais
+        local TEMP_FILE
+        TEMP_FILE=$(mktemp)
+        awk -v ips="$NEW_IPS" '/^ADMIN_WHITELIST_IPS=/{print "ADMIN_WHITELIST_IPS=" ips; next} {print}' "$ENV_FILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$ENV_FILE"
     else
         echo "ADMIN_WHITELIST_IPS=${NEW_IPS}" >> "$ENV_FILE"
     fi

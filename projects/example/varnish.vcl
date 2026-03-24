@@ -62,11 +62,14 @@ sub vcl_backend_response {
         set beresp.grace = 1h;
     }
 
-    # Backend klaida — serviruojam seną versiją jei turim
+    # Backend klaida — serviruojam seną versiją jei turim cache
     if (beresp.status >= 500) {
+        if (bereq.is_bgfetch) {
+            return (abandon);
+        }
         set beresp.ttl = 0s;
         set beresp.grace = 1h;
-        return (restart);
+        return (deliver);
     }
 }
 
