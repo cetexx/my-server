@@ -1,0 +1,116 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Requests/s",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [{ "expr": "sum(rate(traefik_service_requests_total[5m]))", "legendFormat": "Total" }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Error rate (5xx)",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m])) / sum(rate(traefik_service_requests_total[5m])) * 100",
+        "legendFormat": "5xx %"
+      }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Avg response time",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [{
+        "expr": "sum(rate(traefik_service_request_duration_seconds_sum[5m])) / sum(rate(traefik_service_request_duration_seconds_count[5m]))",
+        "legendFormat": "Avg"
+      }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Aktyvūs SSL sertifikatai",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "traefik_tls_certs_not_after_timestamp - time()", "legendFormat": "Liko" }]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "title": "Requests per servisas",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (service) (rate(traefik_service_requests_total[5m]))",
+        "legendFormat": "{{service}}"
+      }]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "title": "Response time per servisas",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (service) (rate(traefik_service_request_duration_seconds_sum[5m])) / sum by (service) (rate(traefik_service_request_duration_seconds_count[5m]))",
+        "legendFormat": "{{service}}"
+      }]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
+      "title": "HTTP status codes",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "expr": "sum(rate(traefik_service_requests_total{code=~\"2..\"}[5m]))", "legendFormat": "2xx" },
+        { "expr": "sum(rate(traefik_service_requests_total{code=~\"3..\"}[5m]))", "legendFormat": "3xx" },
+        { "expr": "sum(rate(traefik_service_requests_total{code=~\"4..\"}[5m]))", "legendFormat": "4xx" },
+        { "expr": "sum(rate(traefik_service_requests_total{code=~\"5..\"}[5m]))", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "title": "Entrypoint requests",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [{
+        "expr": "sum by (entrypoint) (rate(traefik_entrypoint_requests_total[5m]))",
+        "legendFormat": "{{entrypoint}}"
+      }]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["traefik", "proxy"],
+  "time": { "from": "now-3h", "to": "now" },
+  "title": "Traefik",
+  "uid": "traefik"
+}

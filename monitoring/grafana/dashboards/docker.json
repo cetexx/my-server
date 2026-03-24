@@ -1,0 +1,126 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Konteineriai",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "count(container_last_seen{name=~\".+\"})",
+        "legendFormat": "Running"
+      }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Bendras CPU",
+      "type": "gauge",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 400,
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "red", "value": 350 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])) * 100",
+        "legendFormat": "Total CPU %"
+      }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "title": "Bendra RAM",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      },
+      "targets": [{
+        "expr": "sum(container_memory_usage_bytes{name=~\".+\"})",
+        "legendFormat": "Total RAM"
+      }]
+    },
+    {
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "title": "Bendras tinklas",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "Bps" }
+      },
+      "targets": [{
+        "expr": "sum(rate(container_network_receive_bytes_total{name=~\".+\"}[5m])) + sum(rate(container_network_transmit_bytes_total{name=~\".+\"}[5m]))",
+        "legendFormat": "Total"
+      }]
+    },
+    {
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "title": "CPU per konteineris",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\".+\"}[5m])) * 100",
+        "legendFormat": "{{name}}"
+      }]
+    },
+    {
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "title": "RAM per konteineris",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (name) (container_memory_usage_bytes{name=~\".+\"})",
+        "legendFormat": "{{name}}"
+      }]
+    },
+    {
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 14 },
+      "id": 7,
+      "title": "Tinklas IN per konteineris",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (name) (rate(container_network_receive_bytes_total{name=~\".+\"}[5m]))",
+        "legendFormat": "{{name}}"
+      }]
+    },
+    {
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 14 },
+      "id": 8,
+      "title": "Tinklas OUT per konteineris",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "sortBy": "Last", "sortDesc": true } },
+      "targets": [{
+        "expr": "sum by (name) (rate(container_network_transmit_bytes_total{name=~\".+\"}[5m]))",
+        "legendFormat": "{{name}}"
+      }]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["docker", "containers"],
+  "time": { "from": "now-3h", "to": "now" },
+  "title": "Docker konteineriai",
+  "uid": "docker-containers"
+}

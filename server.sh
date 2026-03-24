@@ -25,6 +25,15 @@ DUOMBAZĖS:
   db delete <name>            Ištrink DB (su patvirtinimu)
   db backup [name]            Backup'ink DB (visas arba konkrečią)
 
+MAIL:
+  mail add <user@domain>      Sukurk email accountą
+  mail list                   Visi email accountai
+  mail remove <user@domain>   Pašalink accountą
+  mail password <user@domain> Pakeisk slaptažodį
+  mail alias <from> <to>      Pridėk alias
+  mail dkim setup             Sukurk DKIM raktus
+  mail dkim show              Parodyti DKIM DNS įrašą
+
 SSH VARTOTOJAI:
   ssh add <user> [--docker]   Pridėk SSH vartotoją (su key iš stdin)
   ssh list                    Visi SSH vartotojai
@@ -90,6 +99,9 @@ case "${1:-}" in
                 exit 1
                 ;;
         esac
+        ;;
+    mail)
+        "$SCRIPT_DIR/scripts/mail-manage.sh" "${@:2}"
         ;;
     ssh)
         require_root

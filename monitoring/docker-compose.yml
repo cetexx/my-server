@@ -60,6 +60,16 @@ services:
     configs:
       - source: grafana-datasource
         target: /etc/grafana/provisioning/datasources/datasource.yml
+      - source: grafana-dashboard-provider
+        target: /etc/grafana/provisioning/dashboards/dashboards.yml
+      - source: dashboard-node
+        target: /var/lib/grafana/dashboards/node-exporter.json
+      - source: dashboard-docker
+        target: /var/lib/grafana/dashboards/docker.json
+      - source: dashboard-postgresql
+        target: /var/lib/grafana/dashboards/postgresql.json
+      - source: dashboard-traefik
+        target: /var/lib/grafana/dashboards/traefik.json
     networks:
       - internal
       - traefik-public
@@ -181,6 +191,16 @@ configs:
     file: ./alertmanager/alertmanager.yml
   grafana-datasource:
     file: ./grafana/provisioning/datasources/datasource.yml
+  grafana-dashboard-provider:
+    file: ./grafana/provisioning/dashboards/dashboards.yml
+  dashboard-node:
+    file: ./grafana/dashboards/node-exporter.json
+  dashboard-docker:
+    file: ./grafana/dashboards/docker.json
+  dashboard-postgresql:
+    file: ./grafana/dashboards/postgresql.json
+  dashboard-traefik:
+    file: ./grafana/dashboards/traefik.json
 
 networks:
   traefik-public:
