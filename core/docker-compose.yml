@@ -171,6 +171,38 @@ services:
         - traefik.http.routers.adminer.middlewares=admin-whitelist
         - traefik.http.services.adminer.loadbalancer.server.port=8080
 
+  playwright:
+    image: browserless/chromium:latest
+    environment:
+      MAX_CONCURRENT_SESSIONS: "5"
+      MAX_QUEUE_LENGTH: "10"
+      DEFAULT_LAUNCH_ARGS: '["--disable-gpu","--no-sandbox","--disable-dev-shm-usage"]'
+      TIMEOUT: "60000"
+      TOKEN: ${PLAYWRIGHT_TOKEN}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/json/version || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - traefik-public
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.playwright.rule=Host(`playwright.${DOMAIN}`)
+        - traefik.http.routers.playwright.entrypoints=websecure
+        - traefik.http.routers.playwright.tls.certresolver=letsencrypt
+        - traefik.http.routers.playwright.middlewares=admin-whitelist
+        - traefik.http.services.playwright.loadbalancer.server.port=3000
+
 configs:
   init-databases:
     file: ./init-db/init-databases.sh
