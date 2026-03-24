@@ -1,0 +1,16 @@
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "20m",
+    "max-file": "5"
+  },
+  "live-restore": true,
+  "storage-driver": "overlay2",
+  "default-ulimits": {
+    "nofile": {
+      "Name": "nofile",
+      "Hard": 65536,
+      "Soft": 32768
+    }
+  }
+}

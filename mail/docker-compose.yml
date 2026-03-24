@@ -1,0 +1,92 @@
+version: "3.8"
+
+services:
+  certs-dumper:
+    image: ldez/traefik-certs-dumper:v2.8.3
+    command:
+      - file
+      - --source=/acme/acme.json
+      - --dest=/certs
+      - --domain-subdir
+      - --watch
+    volumes:
+      - /opt/my-server/traefik/acme:/acme:ro
+      - /opt/my-server/certs:/certs
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:14
+    hostname: mail.${DOMAIN}
+    environment:
+      OVERRIDE_HOSTNAME: mail.${DOMAIN}
+      ENABLE_SPAMASSASSIN: "1"
+      ENABLE_CLAMAV: "0"
+      ENABLE_FAIL2BAN: "0"
+      SSL_TYPE: manual
+      SSL_CERT_PATH: /etc/ssl/mail/certificate.crt
+      SSL_KEY_PATH: /etc/ssl/mail/privatekey.key
+      PERMIT_DOCKER: network
+      POSTMASTER_ADDRESS: postmaster@${DOMAIN}
+    ports:
+      - target: 25
+        published: 25
+        protocol: tcp
+        mode: host
+      - target: 587
+        published: 587
+        protocol: tcp
+        mode: host
+      - target: 993
+        published: 993
+        protocol: tcp
+        mode: host
+    volumes:
+      - /opt/my-server/mailserver/data:/var/mail
+      - /opt/my-server/mailserver/state:/var/mail-state
+      - /opt/my-server/mailserver/logs:/var/log/mail
+      - /opt/my-server/mailserver/config:/tmp/docker-mailserver
+      - /opt/my-server/certs/mail.${DOMAIN}:/etc/ssl/mail:ro
+    networks:
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  roundcube:
+    image: roundcube/roundcubemail:1.6-apache
+    environment:
+      ROUNDCUBEMAIL_DB_TYPE: pgsql
+      ROUNDCUBEMAIL_DB_HOST: core_postgresql
+      ROUNDCUBEMAIL_DB_PORT: "5432"
+      ROUNDCUBEMAIL_DB_NAME: roundcube
+      ROUNDCUBEMAIL_DB_USER: roundcube
+      ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
+      ROUNDCUBEMAIL_DEFAULT_HOST: tls://mailserver
+      ROUNDCUBEMAIL_DEFAULT_PORT: "143"
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://mailserver
+      ROUNDCUBEMAIL_SMTP_PORT: "587"
+    networks:
+      - traefik-public
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.roundcube.rule=Host(`mail.${DOMAIN}`)
+        - traefik.http.routers.roundcube.entrypoints=websecure
+        - traefik.http.routers.roundcube.tls.certresolver=letsencrypt
+        - traefik.http.services.roundcube.loadbalancer.server.port=80
+
+networks:
+  traefik-public:
+    external: true
+  internal:
+    external: true

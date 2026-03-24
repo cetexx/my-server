@@ -1,0 +1,96 @@
+groups:
+  - name: node
+    rules:
+      - alert: HighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Aukštas CPU naudojimas ({{ $value | printf \"%.1f\" }}%)"
+
+      - alert: HighMemoryUsage
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Aukštas RAM naudojimas ({{ $value | printf \"%.1f\" }}%)"
+
+      - alert: DiskSpaceLow
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mažai disko vietos ({{ $value | printf \"%.1f\" }}% užimta)"
+
+      - alert: DiskSpaceCritical
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kritiškai mažai disko vietos ({{ $value | printf \"%.1f\" }}% užimta)"
+
+  - name: containers
+    rules:
+      - alert: ContainerDown
+        expr: count by (name) (container_last_seen{name=~".+"} - time() < -60) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Konteineris {{ $labels.name }} numirė"
+
+      - alert: ContainerHighCpu
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name=~".+"}[5m])) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Konteineris {{ $labels.name }} naudoja daug CPU ({{ $value | printf \"%.1f\" }}%)"
+
+      - alert: ContainerHighMemory
+        expr: sum by (name) (container_memory_usage_bytes{name=~".+"}) / sum by (name) (container_spec_memory_limit_bytes{name=~".+"} > 0) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Konteineris {{ $labels.name }} naudoja daug RAM ({{ $value | printf \"%.1f\" }}%)"
+
+  - name: postgresql
+    rules:
+      - alert: PostgresqlDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL nepasiekiamas"
+
+      - alert: PostgresqlTooManyConnections
+        expr: sum(pg_stat_activity_count) / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL daug prisijungimų ({{ $value | printf \"%.0f\" }}%)"
+
+      - alert: PostgresqlDeadlocks
+        expr: increase(pg_stat_database_deadlocks[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL deadlock aptiktas DB {{ $labels.datname }}"
+
+  - name: traefik
+    rules:
+      - alert: TraefikHighErrorRate
+        expr: sum(rate(traefik_service_requests_total{code=~"5.."}[5m])) / sum(rate(traefik_service_requests_total[5m])) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Traefik aukštas 5xx klaidų rodiklis ({{ $value | printf \"%.1f\" }}%)"
