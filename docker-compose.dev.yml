@@ -4,10 +4,10 @@
 #   docker compose -f docker-compose.dev.yml up -d
 #
 # Projektai jungiasi per:
-#   DATABASE_URL=postgresql://admin:admin@localhost:5432/mano_app
-#   REDIS_URL=redis://:devpass@localhost:6379
+#   DATABASE_URL=postgresql://admin:admin@localhost:15432/mano_app
+#   REDIS_URL=redis://:devpass@localhost:16379
 #   PLAYWRIGHT_WS=ws://localhost:3000?token=dev-token
-#   Adminer: http://localhost:8080
+#   Adminer: http://localhost:18080
 
 name: localhost
 
@@ -20,7 +20,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: default
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - pg-data:/var/lib/postgresql/data
 
@@ -29,7 +29,7 @@ services:
     image: redis:7-alpine
     command: redis-server --requirepass devpass --appendonly yes
     ports:
-      - "6379:6379"
+      - "16379:6379"
     volumes:
       - redis-data:/data
 
@@ -49,7 +49,7 @@ services:
       ADMINER_DEFAULT_SERVER: postgresql
       ADMINER_DESIGN: dracula
     ports:
-      - "8080:8080"
+      - "18080:8080"
 
 volumes:
   pg-data:
