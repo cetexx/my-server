@@ -9,8 +9,11 @@
 #   PLAYWRIGHT_WS=ws://localhost:3000?token=dev-token
 #   Adminer: http://localhost:8080
 
+name: localhost
+
 services:
   postgresql:
+    container_name: localhost-postgresql
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: admin
@@ -22,6 +25,7 @@ services:
       - pg-data:/var/lib/postgresql/data
 
   redis:
+    container_name: localhost-redis
     image: redis:7-alpine
     command: redis-server --requirepass devpass --appendonly yes
     ports:
@@ -30,6 +34,7 @@ services:
       - redis-data:/data
 
   playwright:
+    container_name: localhost-playwright
     image: browserless/chromium:latest
     environment:
       MAX_CONCURRENT_SESSIONS: "5"
@@ -38,6 +43,7 @@ services:
       - "3000:3000"
 
   adminer:
+    container_name: localhost-adminer
     image: adminer:4
     environment:
       ADMINER_DEFAULT_SERVER: postgresql
