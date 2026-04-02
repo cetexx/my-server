@@ -1,0 +1,50 @@
+# Lokali development infrastruktūra
+#
+# Paleidimas:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Projektai jungiasi per:
+#   DATABASE_URL=postgresql://admin:admin@localhost:5432/mano_app
+#   REDIS_URL=redis://:devpass@localhost:6379
+#   PLAYWRIGHT_WS=ws://localhost:3000?token=dev-token
+#   Adminer: http://localhost:8080
+
+services:
+  postgresql:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: default
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass devpass --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  playwright:
+    image: browserless/chromium:latest
+    environment:
+      MAX_CONCURRENT_SESSIONS: "5"
+      TOKEN: "dev-token"
+    ports:
+      - "3000:3000"
+
+  adminer:
+    image: adminer:4
+    environment:
+      ADMINER_DEFAULT_SERVER: postgresql
+      ADMINER_DESIGN: dracula
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg-data:
+  redis-data:
