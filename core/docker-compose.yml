@@ -203,6 +203,31 @@ services:
         - traefik.http.routers.playwright.middlewares=admin-whitelist
         - traefik.http.services.playwright.loadbalancer.server.port=3000
 
+  shepherd:
+    image: containrrr/shepherd
+    environment:
+      TZ: "Europe/Vilnius"
+      SLEEP_TIME: "15m"
+      FILTER_SERVICES: "label=shepherd.enable=true"
+      VERBOSE: "true"
+      ROLLBACK_ON_FAILURE: "true"
+      IMAGE_AUTOCLEAN_LIMIT: "5"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+      placement:
+        constraints:
+          - node.role == manager
+
 configs:
   init-databases:
     file: ./init-db/init-databases.sh

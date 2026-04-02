@@ -13,7 +13,7 @@ Naudojimas: ./server.sh <komanda> [argumentai]
 
 SETUP & DEPLOY:
   setup                       Pradinis serverio setup'as
-  deploy <stack|all>          Deploy'ink stack'ą (core, monitoring, mail, projects/xxx)
+  deploy <stack|all>          Deploy'ink stack'ą (core, monitoring, mail)
 
 STATUSAS:
   status                      Serverio ir servisų statusas

@@ -14,10 +14,9 @@ Docker Swarm paremta infrastruktūra VPS serveriui su daugybe projektų.
 
 ```
 Traefik (reverse proxy, SSL, rate limiting)
-├── core          PostgreSQL 17, Redis, Portainer, Adminer, Playwright
+├── core          PostgreSQL 17, Redis, Portainer, Adminer, Playwright, Shepherd
 ├── monitoring    Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
-├── mail          docker-mailserver, Roundcube
-└── projects/     Atskiri projektai su Varnish cache
+└── mail          docker-mailserver, Roundcube
 ```
 
 ## Reikalavimai
@@ -66,7 +65,7 @@ sudo ./server.sh ssh harden
 ├── .env.example                       # Konfigūracijos šablonas
 │
 ├── core/
-│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright
+│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright, Shepherd
 │   ├── init-db/init-databases.sh      # DB inicializacija (Roundcube, Grafana, exporter)
 │   ├── postgresql/postgresql.conf     # PG tuning (4GB shared_buffers, optimizuota 16GB RAM)
 │   └── docker-daemon.json             # Docker daemon konfig (log rotation)
@@ -90,11 +89,6 @@ sudo ./server.sh ssh harden
 │
 ├── mail/
 │   └── docker-compose.yml             # docker-mailserver, Roundcube, certs-dumper
-│
-├── projects/
-│   └── example/
-│       ├── docker-compose.yml         # Šablonas su Varnish cache sidecar
-│       └── varnish.vcl                # Cache taisyklės (statika 30d, HTML 5m)
 │
 └── scripts/
     ├── db-create.sh                   # Sukurti izoliuotą DB projektui
@@ -147,31 +141,31 @@ sudo ./server.sh firewall setup        # Firewall su reikiamais portais
 
 # Deploy
 ./server.sh deploy core                # Vienas stack'as
-./server.sh deploy projects/my-app     # Projektas
 ./server.sh deploy all                 # Viskas
 ```
 
 ## Naujas projektas
 
+Projektai laikomi atskiruose repo ir deploy'inami tiesiogiai ant serverio:
+
 ```bash
-# 1. Kopijuok šabloną
-cp -r projects/example projects/my-app
-
-# 2. Sukurk DB
+# 1. Ant serverio: sukurk DB (jei reikia)
 ./server.sh db create my_app
-# Atspausdins: DATABASE_URL=postgresql://my_app:xK7mN2pQ9@core_postgresql:5432/my_app
 
-# 3. Redaguok compose (image, domenas, env)
-nano projects/my-app/docker-compose.yml
+# 2. Savo projekto repo: sukurk docker-compose.yml su:
+#    - image: tavo-user/tavo-app:latest
+#    - traefik labels (domenas, SSL)
+#    - shepherd.enable=true (auto-update)
+#    - tinklai: traefik-public, internal
 
-# 4. Pritaikyk Varnish cache taisykles
-nano projects/my-app/varnish.vcl
+# 3. Pirmas deploy ant serverio:
+docker stack deploy -c docker-compose.yml my-app
 
-# 5. Deploy
-./server.sh deploy projects/my-app
+# 4. Tolesni atnaujinimai — automatiškai:
+#    Push naują image → Shepherd per 15 min atnaujins servisą
 ```
 
-Srautas: `Traefik → Varnish (SSD cache) → App`
+Srautas: `Traefik → App` (Varnish pridedamas projekto compose faile jei reikia)
 
 ## Playwright (headless browser)
 
@@ -269,7 +263,7 @@ Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
 ## Memory alokacija
 
 ```
-Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) = 5.5 GB
+Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) + 128M (shepherd) = 5.6 GB
 Monitoring:  1G (prom) + 512M (grafana) + 256M (cadvisor) + 256M (alertmanager) + 256M (pg-exp) + 256M (dozzle) = 2.5 GB
 Mail:        2G (mailserver) = 2.0 GB
 OS + Docker: ~2 GB

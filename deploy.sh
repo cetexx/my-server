@@ -8,10 +8,9 @@ if [ -z "$STACK_PATH" ]; then
     echo "Usage: ./deploy.sh <stack|all>"
     echo ""
     echo "Stacks:"
-    echo "  core          - Traefik, PostgreSQL, Redis, Portainer, Adminer"
+    echo "  core          - Traefik, PostgreSQL, Redis, Portainer, Adminer, Shepherd"
     echo "  monitoring    - Prometheus, Grafana, Node Exporter, cAdvisor, Dozzle"
     echo "  mail          - docker-mailserver, Roundcube"
-    echo "  projects/xxx  - projekto stack'as"
     echo "  all           - visi pagrindiniai stack'ai"
     exit 1
 fi

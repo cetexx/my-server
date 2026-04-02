@@ -8,16 +8,16 @@ Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-n
 
 Three Docker Swarm stacks sharing two overlay networks (`traefik-public`, `internal`):
 
-- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium)
+- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), Shepherd (auto-update)
 - **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
 - **mail** — docker-mailserver, Roundcube, traefik-certs-dumper
 
-Projects live in `projects/<name>/` — each is an independent Swarm stack with optional Varnish cache sidecar.
+Projects live in their own repositories and are deployed independently on the server. Shepherd (in core stack) auto-updates services labeled `shepherd.enable=true` when new images are pushed to the registry.
 
 ## Key design decisions
 
 - **Single PostgreSQL instance** shared by all projects. Each project gets an isolated DB user with `REVOKE ALL FROM PUBLIC` + `CONNECTION LIMIT`. Create via `./scripts/db-create.sh`.
-- **Varnish per-project** (not centralized) — each project controls its own cache rules via VCL. File-based storage on SSD instead of S3.
+- **Shepherd** (containrrr/shepherd) auto-updates Swarm services with `shepherd.enable=true` label when new images appear in registry. Checks every 15 min, auto-rollback on failure.
 - **Two overlay networks only**: `traefik-public` for HTTP routing, `internal` for everything else (DB, Redis, metrics, inter-service).
 - **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Alertmanager, Playwright, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
 - **Rate limiting** (100 req/s, burst 50) on public services (Roundcube, projects) via Traefik `rateLimit` middleware, also defined on Traefik.
@@ -65,7 +65,7 @@ Custom `postgresql.conf` mounted via Swarm config. Tuned for 16GB RAM: `shared_b
 
 ## Memory budget
 
-Total limits: ~10 GB out of 16 GB. ~4 GB free for projects, ~2 GB for OS/Docker.
+Total limits: ~10.1 GB out of 16 GB. ~3.9 GB free for projects, ~2 GB for OS/Docker.
 
 ## Gotchas
 
