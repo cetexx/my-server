@@ -59,6 +59,22 @@ All in `.env` (copied from `.env.example`). Key vars:
 
 All in `scripts/`. Main entry point is `./server.sh` which routes subcommands to individual scripts. Scripts that modify system state (ssh, firewall) require root.
 
+### Multi-domain mail
+
+`mail-manage.sh` supports multiple project domains sharing one docker-mailserver instance. Each project domain needs its own DKIM key + DNS records (SPF/DKIM/DMARC/MX). Typical flow for a new project:
+
+```bash
+./server.sh mail add-domain pickzy.app          # generates DKIM + prints DNS records
+# → add DNS records in that domain's Cloudflare/registrar
+# → wait 5-15 min for propagation
+./server.sh mail add labas@pickzy.app           # creates mailbox (auto-checks DKIM first)
+./server.sh mail test labas@pickzy.app test-abc@mail-tester.com  # verify deliverability
+```
+
+DKIM keys live at `/opt/my-server/mailserver/config/opendkim/keys/<domain>/mail.txt`. Target score on mail-tester.com: **≥8/10** before using server for time-sensitive emails (OTP, password reset). Below 8/10 → switch to hosted SMTP (Postmark, Mailgun) for those specific use cases.
+
+Server IP reputation warms up over 3-6 weeks of consistent low-volume sending. Brand-new SMTP servers often get quarantined by Gmail/iCloud even with perfect SPF/DKIM/DMARC — plan accordingly.
+
 ## PostgreSQL tuning
 
 Custom `postgresql.conf` mounted via Swarm config. Tuned for 16GB RAM: `shared_buffers=4GB`, `effective_cache_size=12GB`, `work_mem=64MB`. Loaded via `postgres -c config_file=/etc/postgresql/postgresql.conf`.
