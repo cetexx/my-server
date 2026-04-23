@@ -252,8 +252,14 @@ services:
 configs:
   init-databases:
     file: ./init-db/init-databases.sh
+  # Docker Swarm configs are immutable after creation — content can't be
+  # updated in place, only replaced by a new config with a different
+  # name. Bump the name suffix whenever postgresql.conf changes so the
+  # stack deploy swaps the reference. Previous `core_pg-tuning` shipped
+  # empty and was never refreshable; `-v2` fixes that.
   pg-tuning:
     file: ./postgresql/postgresql.conf
+    name: pg-tuning-v2
 
 networks:
   traefik-public:
