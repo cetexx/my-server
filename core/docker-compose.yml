@@ -10,6 +10,11 @@ services:
     image: traefik:v3.6.12
     command:
       - --api.dashboard=true
+      # `ping` exposes /ping for the built-in `traefik healthcheck` CLI;
+      # without it the compose-level healthcheck in this file reports
+      # "please enable `ping` to use health check" and the service
+      # never converges.
+      - --ping=true
       - --providers.swarm.endpoint=unix:///var/run/docker.sock
       - --providers.swarm.exposedByDefault=false
       - --providers.swarm.network=traefik-public
@@ -134,7 +139,11 @@ services:
           memory: 128M
 
   portainer:
-    image: portainer/portainer-ce:2.21.5
+    # Bumped 2.21.5 → 2.32.0: the on-disk BoltDB schema had been
+    # migrated by a previous newer Portainer (evidence: 2.21.5 fatals
+    # "database schema version does not align with server version" on
+    # startup). Modern Portainer opens the newer DB fine.
+    image: portainer/portainer-ce:2.32.0
     command: -H unix:///var/run/docker.sock
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/ || exit 1"]
@@ -163,7 +172,10 @@ services:
   adminer:
     image: adminer:4.8.1-standalone
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/ > /dev/null || exit 1"]
+      # Adminer's :4-standalone variant is PHP's built-in dev server
+      # with no curl. Use wget (busybox ships it) via CMD-SHELL so the
+      # OR-exit works — a plain `wget --spider` exits 0/1 cleanly.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -259,7 +271,7 @@ configs:
   # empty and was never refreshable; `-v2` fixes that.
   pg-tuning:
     file: ./postgresql/postgresql.conf
-    name: pg-tuning-v2
+    name: pg-tuning-v3
 
 networks:
   traefik-public:
