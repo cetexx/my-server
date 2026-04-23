@@ -40,7 +40,10 @@ services:
         - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
   grafana:
-    image: grafana/grafana:11.6.0  # staying on the 11.x LTS line; v12/v13 are separate majors
+    # Bumped to 13.x: per upstream 12.x→13.x migration guide, the
+    # schema auto-upgrades cleanly on PostgreSQL. Main consumer-side
+    # change is React 19, which only affects custom plugins (none here).
+    image: grafana/grafana:13.0.1
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}

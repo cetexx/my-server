@@ -196,10 +196,10 @@ services:
         - traefik.http.services.adminer.loadbalancer.server.port=8080
 
   playwright:
-    # Pin the current SHA — browserless pushes `:latest` over any
-    # backward-incompatible API change without a heads-up. The running
-    # image came from ghcr.io; use the same registry for reproducibility.
-    image: ghcr.io/browserless/chromium:latest@sha256:57a1edb1f76e56cf1f128a2c379381df9d937e643c2cf562d76463b0280c24c4
+    # Pinned to a concrete release tag. browserless pushes `:latest`
+    # over any backward-incompatible API change without a heads-up, so
+    # always reference the version tag directly. Bump intentionally.
+    image: ghcr.io/browserless/chromium:v2.44.0
     environment:
       MAX_CONCURRENT_SESSIONS: "5"
       MAX_QUEUE_LENGTH: "10"
@@ -239,9 +239,8 @@ services:
     # Currently running but has no work: pickzy-food services no longer
     # carry `shepherd.enable=true` since we moved to manual button-release.
     # Consider removing this service entirely if no other stack on this
-    # host uses label-based auto-update. SHA-pinned so a `:latest` shift
-    # doesn't reintroduce the "ghcr.io unauthorized" log spam.
-    image: containrrr/shepherd:latest@sha256:b117c2394832e088932d5e1eebb8df6c1924f47d0fef31788cb310c0fe3bf7db
+    # host uses label-based auto-update.
+    image: containrrr/shepherd:v1.8.1
     environment:
       TZ: "Europe/Vilnius"
       SLEEP_TIME: "15m"
