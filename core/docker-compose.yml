@@ -2,7 +2,12 @@ version: "3.8"
 
 services:
   traefik:
-    image: traefik:v3.2
+    # Pinned to v3.6 (currently running v3.6.12). Floating `:v3` silently
+    # advanced major lines in the past and introduced Docker API
+    # incompatibilities — a `docker stack deploy` once pulled a newer image
+    # that couldn't talk to the local daemon. Bump this pin intentionally
+    # when upgrading; don't rely on the tag moving.
+    image: traefik:v3.6.12
     command:
       - --api.dashboard=true
       - --providers.swarm.endpoint=unix:///var/run/docker.sock
@@ -64,9 +69,17 @@ services:
         - traefik.http.routers.traefik-dashboard.service=api@internal
         - traefik.http.routers.traefik-dashboard.middlewares=admin-whitelist
         - traefik.http.services.traefik-dashboard.loadbalancer.server.port=8080
+        # Swarm provider auto-creates a service named `core-traefik`
+        # from the swarm service name. It errors "port is missing" if
+        # we don't explicitly bind it, even though no router references
+        # this auto-service (`traefik-dashboard` is the only real one).
+        # Point it at the same admin port to silence the log spam.
+        - traefik.http.services.core-traefik.loadbalancer.server.port=8080
 
   postgresql:
-    image: postgres:17-alpine
+    # Pinned to the minor. Point-upgrades are routine (17.9 → 17.10)
+    # and bump this when doing a planned upgrade.
+    image: postgres:17.9-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -100,7 +113,7 @@ services:
           memory: 512M
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.8-alpine
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
@@ -148,7 +161,7 @@ services:
         - traefik.http.services.portainer.loadbalancer.server.port=9000
 
   adminer:
-    image: adminer:4
+    image: adminer:4.8.1-standalone
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/ > /dev/null || exit 1"]
       interval: 30s
@@ -172,7 +185,10 @@ services:
         - traefik.http.services.adminer.loadbalancer.server.port=8080
 
   playwright:
-    image: browserless/chromium:latest
+    # Pin the current SHA — browserless pushes `:latest` over any
+    # backward-incompatible API change without a heads-up. The running
+    # image came from ghcr.io; use the same registry for reproducibility.
+    image: ghcr.io/browserless/chromium:latest@sha256:57a1edb1f76e56cf1f128a2c379381df9d937e643c2cf562d76463b0280c24c4
     environment:
       MAX_CONCURRENT_SESSIONS: "5"
       MAX_QUEUE_LENGTH: "10"
@@ -204,7 +220,12 @@ services:
         - traefik.http.services.playwright.loadbalancer.server.port=3000
 
   shepherd:
-    image: containrrr/shepherd
+    # Currently running but has no work: pickzy-food services no longer
+    # carry `shepherd.enable=true` since we moved to manual button-release.
+    # Consider removing this service entirely if no other stack on this
+    # host uses label-based auto-update. SHA-pinned so a `:latest` shift
+    # doesn't reintroduce the "ghcr.io unauthorized" log spam.
+    image: containrrr/shepherd:latest@sha256:b117c2394832e088932d5e1eebb8df6c1924f47d0fef31788cb310c0fe3bf7db
     environment:
       TZ: "Europe/Vilnius"
       SLEEP_TIME: "15m"

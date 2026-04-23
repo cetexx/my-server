@@ -168,7 +168,8 @@ services:
         - traefik.http.services.alertmanager.loadbalancer.server.port=9093
 
   dozzle:
-    image: amir20/dozzle:v8
+    # Pin to running SHA; Dozzle ships frequent UI changes on `:v8`.
+    image: amir20/dozzle:v8@sha256:0df89c904da71e94a0c9ed3c89a890f01488321b5f10ac1e0c0bedcead9af6e4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
