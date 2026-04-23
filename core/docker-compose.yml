@@ -175,14 +175,11 @@ services:
 
   adminer:
     image: adminer:4.8.1-standalone
-    healthcheck:
-      # Adminer's :4-standalone variant is PHP's built-in dev server
-      # with no curl. Use wget (busybox ships it) via CMD-SHELL so the
-      # OR-exit works — a plain `wget --spider` exits 0/1 cleanly.
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+    # No compose-level healthcheck. adminer:4-standalone runs PHP's
+    # built-in dev server which handles probe requests poorly enough
+    # to crash the container; swarm restart loop then makes it worse.
+    # Traefik's own healthcheck (if we bolt one on later) can gate
+    # routing without Docker restarting the process.
     environment:
       ADMINER_DEFAULT_SERVER: core_postgresql
       ADMINER_DESIGN: dracula
@@ -212,10 +209,15 @@ services:
       TIMEOUT: "60000"
       TOKEN: ${PLAYWRIGHT_TOKEN}
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/json/version || exit 1"]
+      # browserless/chromium's /json/version sits behind the TOKEN auth
+      # check in newer versions; unauthenticated probes return 401 and
+      # `wget --spider` treats that as failure. /docs serves without
+      # token and returns 200, so use it.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/docs || exit 1"]
       interval: 30s
-      timeout: 5s
-      retries: 3
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - traefik-public
       - internal
