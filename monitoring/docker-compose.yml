@@ -193,25 +193,40 @@ services:
         - traefik.http.routers.dozzle.middlewares=admin-whitelist
         - traefik.http.services.dozzle.loadbalancer.server.port=8080
 
+# Docker Swarm configs are immutable after creation — any content
+# change needs a new config name. Version-suffix each entry and bump
+# the suffix whenever the underlying file changes so stack deploy
+# swaps the reference instead of erroring "only updates to Labels are
+# allowed". Old unreferenced configs can be pruned with
+# `docker config prune`.
 configs:
   prometheus-config:
     file: ./prometheus/prometheus.yml
+    name: prometheus-config-v2
   alert-rules:
     file: ./prometheus/alert-rules.yml
+    name: alert-rules-v2
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
+    name: alertmanager-config-v2
   grafana-datasource:
     file: ./grafana/provisioning/datasources/datasource.yml
+    name: grafana-datasource-v2
   grafana-dashboard-provider:
     file: ./grafana/provisioning/dashboards/dashboards.yml
+    name: grafana-dashboard-provider-v2
   dashboard-node:
     file: ./grafana/dashboards/node-exporter.json
+    name: dashboard-node-v2
   dashboard-docker:
     file: ./grafana/dashboards/docker.json
+    name: dashboard-docker-v2
   dashboard-postgresql:
     file: ./grafana/dashboards/postgresql.json
+    name: dashboard-postgresql-v2
   dashboard-traefik:
     file: ./grafana/dashboards/traefik.json
+    name: dashboard-traefik-v2
 
 networks:
   traefik-public:
