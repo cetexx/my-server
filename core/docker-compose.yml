@@ -38,7 +38,11 @@ services:
         protocol: tcp
         mode: host
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck"]
+      # `traefik healthcheck` without args probes the API endpoint first
+      # and errors "please enable ping" when the API isn't exposed. Pass
+      # `--ping` so it hits /ping directly (which we enabled via the
+      # `--ping=true` command flag).
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 30s
       timeout: 5s
       retries: 3
