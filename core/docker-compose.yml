@@ -174,7 +174,9 @@ services:
         - traefik.http.services.portainer.loadbalancer.server.port=9000
 
   adminer:
-    image: adminer:4.9.0-standalone
+    # 4.8.1 is the newest `standalone` variant available on Docker Hub
+    # (4.9+ only ships the fpm+nginx variants at time of pin).
+    image: adminer:4.8.1-standalone
     # No compose-level healthcheck. adminer:4-standalone runs PHP's
     # built-in dev server which handles probe requests poorly enough
     # to crash the container; swarm restart loop then makes it worse.
