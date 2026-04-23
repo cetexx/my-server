@@ -86,8 +86,10 @@ services:
         - traefik.http.services.core-traefik.loadbalancer.server.port=8080
 
   postgresql:
-    # Pinned to the exact point release. Bump intentionally.
-    image: postgres:17.10-alpine
+    # Pinned to the exact point release — 17.9-alpine is the newest
+    # 17.x alpine tag on Docker Hub at time of pin. Bump intentionally
+    # when a newer 17.x appears.
+    image: postgres:17.9-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
