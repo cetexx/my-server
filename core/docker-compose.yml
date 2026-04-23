@@ -239,34 +239,11 @@ services:
         - traefik.http.routers.playwright.middlewares=admin-whitelist
         - traefik.http.services.playwright.loadbalancer.server.port=3000
 
-  shepherd:
-    # Currently running but has no work: pickzy-food services no longer
-    # carry `shepherd.enable=true` since we moved to manual button-release.
-    # Consider removing this service entirely if no other stack on this
-    # host uses label-based auto-update.
-    image: containrrr/shepherd:v1.8.1
-    environment:
-      TZ: "Europe/Vilnius"
-      SLEEP_TIME: "15m"
-      FILTER_SERVICES: "label=shepherd.enable=true"
-      VERBOSE: "true"
-      ROLLBACK_ON_FAILURE: "true"
-      IMAGE_AUTOCLEAN_LIMIT: "5"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - internal
-    deploy:
-      mode: replicated
-      replicas: 1
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 32M
-      placement:
-        constraints:
-          - node.role == manager
+  # Shepherd removed 2026-04-24. Pickzy runs a manual button-release
+  # workflow (coordinated API + mobile tagging) so there is no work for
+  # a label-driven auto-update daemon to do. The upstream project has
+  # also been unmaintained since ~2023. If a future stack genuinely
+  # needs this pattern, prefer `watchtower` or a purpose-built CI step.
 
 configs:
   init-databases:
