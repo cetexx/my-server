@@ -149,11 +149,10 @@ services:
     # startup). Modern Portainer opens the newer DB fine.
     image: portainer/portainer-ce:2.32.0
     command: -H unix:///var/run/docker.sock
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9000/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+    # No compose-level healthcheck — the portainer image ships no wget
+    # or curl, and shell-less distroless variants leave nothing else
+    # usable. If Portainer's HTTP is down, swarm restarts are overkill;
+    # Traefik will stop routing to it regardless.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/my-server/portainer/data:/data
