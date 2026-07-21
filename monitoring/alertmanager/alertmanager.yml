@@ -1,8 +1,9 @@
 global:
   # Siunčiam per vidinį mail serverį (PERMIT_DOCKER=network leidžia be auth)
   smtp_smarthost: 'mail_mailserver:25'
-  # SVARBU: pakeisk example.com į savo domeną!
-  smtp_from: 'alertmanager@example.com'
+  # Domenas, kurį tvarko šio serverio mailserver (DKIM/SPF/DMARC sutvarkyti) — kad
+  # Gmail nepriimtų kaip spoof (example.com SPF -all → hard-fail, alertai tyliai krisdavo).
+  smtp_from: 'alertmanager@pickzy.app'
   smtp_require_tls: false
 
 route:
