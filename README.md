@@ -16,7 +16,7 @@ Docker Swarm paremta infrastruktūra VPS serveriui su daugybe projektų.
 Traefik (reverse proxy, SSL, rate limiting)
 ├── core          Traefik, PostgreSQL 17, Redis, Portainer, Adminer, Playwright, socket-proxy
 ├── monitoring    Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
-└── mail          docker-mailserver, Roundcube
+└── mail          docker-mailserver v15 (Rspamd), Roundcube webmail (mail.cetex.dev)
 ```
 
 ## Reikalavimai
@@ -88,7 +88,7 @@ sudo ./server.sh ssh harden
 │           └── traefik.json           # Proxy metrikos
 │
 ├── mail/
-│   └── docker-compose.yml             # docker-mailserver, Roundcube, certs-dumper
+│   └── docker-compose.yml             # docker-mailserver v15 (Rspamd), Roundcube (skaito Traefik acme.json)
 │
 └── scripts/
     ├── db-create.sh                   # Sukurti izoliuotą DB projektui
@@ -266,7 +266,7 @@ Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
 ```
 Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) + 64M (socket-proxy) ≈ 5.6 GB
 Monitoring:  1G (prom) + 512M (grafana) + 128M (node-exp) + 256M×4 (cadvisor/alertmgr/pg-exp/dozzle) ≈ 2.7 GB
-Mail:        2G (mailserver — kai bus paleistas, dar ne)
+Mail:        2G (mailserver v15 + Rspamd) + Roundcube webmail
 OS + Docker: ~2 GB
 Laisva:      ~12 GB projektams (po upgrade į 24 GB RAM)
 ```

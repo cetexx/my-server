@@ -6,11 +6,12 @@ Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-n
 
 ## Architecture
 
-Three Docker Swarm stacks sharing two overlay networks (`traefik-public`, `internal`):
+Four Docker Swarm infrastructure stacks sharing two overlay networks (`traefik-public`, `internal`):
 
 - **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), docker-socket-proxy (filtered read-only Docker API for Traefik)
 - **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
-- **mail** (planned — not yet deployed) — docker-mailserver, Roundcube, traefik-certs-dumper
+- **mail** — docker-mailserver **v15** (Rspamd for spam + DKIM), Roundcube webmail at `mail.cetex.dev`. TLS read directly from Traefik `acme.json` (`SSL_TYPE=letsencrypt`, no certs-dumper). One instance serves natars.mobi, xheroes.agency, cetex.dev.
+- **landing** — nginx static page at `cetex.dev` + Traefik redirects (www→https, bare server-IP→`https://cetex.dev`)
 
 Projects live in their own repositories and are deployed independently via CI/CD: GitHub Actions builds an image → pushes to GHCR → SSHes in and runs the project's `swarm-deploy.sh` (`docker stack deploy --with-registry-auth`). No auto-update daemon.
 
@@ -73,21 +74,28 @@ All in `.env` (copied from `.env.example`). Key vars:
 
 All in `scripts/`. Main entry point is `./server.sh` which routes subcommands to individual scripts. Scripts that modify system state (ssh, firewall) require root.
 
-### Multi-domain mail
+### Mail (docker-mailserver v15 + Rspamd)
 
-`mail-manage.sh` supports multiple project domains sharing one docker-mailserver instance. Each project domain needs its own DKIM key + DNS records (SPF/DKIM/DMARC/MX). Typical flow for a new project:
+`MAIL_DOMAIN` in `.env` (= `cetex.dev`) is the mailserver identity — SEPARATE from `DOMAIN` (`pickzy.app`, whose mail is on Google Workspace). Mailserver FQDN + webmail = `mail.cetex.dev`. One instance serves all project domains, each fully independent (own DKIM/MX/SPF/mailboxes).
 
+**Sending IP = 176 (the host default), NOT a dedicated IP** (learned the hard way 2026-07-21). Docker Swarm overlay containers egress via the host's *default route* IP (176); forcing a second IP (212) via SNAT fights Docker+firewalld iptables reconciliation and is unreliable — tried and reverted. So SPF and PTR must reference **176**. True per-IP mail isolation would need a standalone host-networked mailserver *outside* Swarm.
+
+Add a new project domain:
 ```bash
-./server.sh mail add-domain pickzy.app          # generates DKIM + prints DNS records
-# → add DNS records in that domain's Cloudflare/registrar
-# → wait 5-15 min for propagation
-./server.sh mail add labas@pickzy.app           # creates mailbox (auto-checks DKIM first)
-./server.sh mail test labas@pickzy.app test-abc@mail-tester.com  # verify deliverability
+./server.sh mail add-domain natars.mobi      # gen DKIM (Rspamd) + ensure it's in dkim_signing.conf + print DNS
+./server.sh mail add info@natars.mobi <pw>   # create mailbox (password as arg = non-interactive)
 ```
+Then add DNS (DNS-only / grey cloud) for that domain: `MX → mail.cetex.dev` (prio 10), `TXT @: v=spf1 ip4:176.223.132.42 ~all`, `TXT _dmarc: v=DMARC1; p=none; rua=mailto:postmaster@<domain>`, `TXT mail._domainkey: <contents of the rspamd public.dns.txt>`.
 
-DKIM keys live at `/opt/my-server/mailserver/config/opendkim/keys/<domain>/mail.txt`. Target score on mail-tester.com: **≥8/10** before using server for time-sensitive emails (OTP, password reset). Below 8/10 → switch to hosted SMTP (Postmark, Mailgun) for those specific use cases.
+**Rspamd DKIM gotchas:**
+- Keys: `/opt/my-server/mailserver/config/rspamd/dkim/rsa-2048-mail-<domain>.{private,public.dns}.txt`. The `public.dns.txt` IS the ready DNS TXT value.
+- `setup config dkim domain X` generates the key but does NOT reliably add the domain to `rspamd/override.d/dkim_signing.conf` `domain { }` — **each domain must be listed there** or it won't sign. `mail-manage.sh add-domain` now handles this.
+- In `dkim_signing.conf`: `sign_local = true` + `check_pubkey = false` (with `check_pubkey = true` Rspamd skips signing when the DNS check fails). Reload: `docker exec <mail> supervisorctl restart rspamd`.
+- Rspamd signs only **authenticated (587) or local** mail — apps MUST send via authenticated SMTP submission on 587.
 
-Server IP reputation warms up over 3-6 weeks of consistent low-volume sending. Brand-new SMTP servers often get quarantined by Gmail/iCloud even with perfect SPF/DKIM/DMARC — plan accordingly.
+**App SMTP** (Laravel): `MAIL_HOST=mail.cetex.dev MAIL_PORT=587 MAIL_ENCRYPTION=tls MAIL_USERNAME=no-reply@<domain> MAIL_PASSWORD=<pw>`.
+
+**PTR:** set at serveriai.lt self-service for IP 176 → `mail.cetex.dev` (ideally matching HELO). Target mail-tester.com ≥8/10; below → hosted SMTP (Postmark/Mailgun) for OTP/password-reset. IP reputation warms over 3-6 weeks.
 
 ## PostgreSQL tuning
 
