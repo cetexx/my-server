@@ -2,22 +2,22 @@
 
 ## What is this
 
-Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-node swarm on Rocky Linux 10 (KVM), 4 vCPU, 16GB RAM, 160GB SSD, 1Gbps.
+Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-node swarm on Rocky Linux 10 (KVM), 6 vCPU, 24GB RAM, 300GB SSD, 1Gbps.
 
 ## Architecture
 
 Three Docker Swarm stacks sharing two overlay networks (`traefik-public`, `internal`):
 
-- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), Shepherd (auto-update)
+- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), docker-socket-proxy (filtered read-only Docker API for Traefik)
 - **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
-- **mail** — docker-mailserver, Roundcube, traefik-certs-dumper
+- **mail** (planned — not yet deployed) — docker-mailserver, Roundcube, traefik-certs-dumper
 
-Projects live in their own repositories and are deployed independently on the server. Shepherd (in core stack) auto-updates services labeled `shepherd.enable=true` when new images are pushed to the registry.
+Projects live in their own repositories and are deployed independently via CI/CD: GitHub Actions builds an image → pushes to GHCR → SSHes in and runs the project's `swarm-deploy.sh` (`docker stack deploy --with-registry-auth`). No auto-update daemon.
 
 ## Key design decisions
 
 - **Single PostgreSQL instance** shared by all projects. Each project gets an isolated DB user with `REVOKE ALL FROM PUBLIC` + `CONNECTION LIMIT`. Create via `./scripts/db-create.sh`.
-- **Shepherd** (containrrr/shepherd) auto-updates Swarm services with `shepherd.enable=true` label when new images appear in registry. Checks every 15 min, auto-rollback on failure.
+- **docker-socket-proxy** (tecnativa) fronts the Docker API for Traefik — Traefik connects via `tcp://core_socket-proxy:2375` (GET-only, `POST=0`) instead of mounting the raw `/var/run/docker.sock`, so a compromised internet-facing Traefik can't get root-equivalent host access.
 - **Two overlay networks only**: `traefik-public` for HTTP routing, `internal` for everything else (DB, Redis, metrics, inter-service).
 - **IP whitelist** on admin tools (Traefik dashboard, Portainer, Adminer, Grafana, Prometheus, Alertmanager, Playwright, Dozzle) via Traefik `ipAllowList` middleware defined on the Traefik service in core stack.
 - **Rate limiting** (100 req/s, burst 50) on public services (Roundcube, projects) via Traefik `rateLimit` middleware, also defined on Traefik.
@@ -91,11 +91,11 @@ Server IP reputation warms up over 3-6 weeks of consistent low-volume sending. B
 
 ## PostgreSQL tuning
 
-Custom `postgresql.conf` mounted via Swarm config. Tuned for 16GB RAM: `shared_buffers=4GB`, `effective_cache_size=12GB`, `work_mem=64MB`. Loaded via `postgres -c config_file=/etc/postgresql/postgresql.conf`.
+Custom `postgresql.conf` mounted via Swarm config. Tuned for 24GB RAM: `shared_buffers=4GB`, `effective_cache_size=12GB`, `work_mem=64MB`. Loaded via `postgres -c config_file=/etc/postgresql/postgresql.conf`.
 
 ## Memory budget
 
-Total limits: ~10.1 GB out of 16 GB. ~3.9 GB free for projects, ~2 GB for OS/Docker.
+Total limits: ~11 GB out of 24 GB. ~11 GB free for projects, ~2 GB for OS/Docker.
 
 ## Gotchas
 

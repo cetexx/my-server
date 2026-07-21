@@ -5,16 +5,16 @@ Docker Swarm paremta infrastruktūra VPS serveriui su daugybe projektų.
 ## Serveris
 
 - **OS**: Rocky Linux 10 (KVM)
-- **CPU**: 4 x 2.30 GHz
-- **RAM**: 16 GB
-- **Disk**: 160 GB SSD
-- **Tinklas**: 1 Gbps (iki 32 TB/mėn.)
+- **CPU**: 6 x 2.30 GHz
+- **RAM**: 24 GB
+- **Disk**: 300 GB SSD
+- **Tinklas**: 1 Gbps (iki 48 TB/mėn.)
 
 ## Architektūra
 
 ```
 Traefik (reverse proxy, SSL, rate limiting)
-├── core          PostgreSQL 17, Redis, Portainer, Adminer, Playwright, Shepherd
+├── core          Traefik, PostgreSQL 17, Redis, Portainer, Adminer, Playwright, socket-proxy
 ├── monitoring    Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
 └── mail          docker-mailserver, Roundcube
 ```
@@ -65,9 +65,9 @@ sudo ./server.sh ssh harden
 ├── .env.example                       # Konfigūracijos šablonas
 │
 ├── core/
-│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright, Shepherd
+│   ├── docker-compose.yml             # Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright, socket-proxy
 │   ├── init-db/init-databases.sh      # DB inicializacija (Roundcube, Grafana, exporter)
-│   ├── postgresql/postgresql.conf     # PG tuning (4GB shared_buffers, optimizuota 16GB RAM)
+│   ├── postgresql/postgresql.conf     # PG tuning (4GB shared_buffers, optimizuota 24GB RAM)
 │   └── docker-daemon.json             # Docker daemon konfig (log rotation)
 │
 ├── monitoring/
@@ -153,16 +153,17 @@ Projektai laikomi atskiruose repo ir deploy'inami tiesiogiai ant serverio:
 ./server.sh db create my_app
 
 # 2. Savo projekto repo: sukurk docker-compose.yml su:
-#    - image: tavo-user/tavo-app:latest
-#    - traefik labels (domenas, SSL)
-#    - shepherd.enable=true (auto-update)
+#    - image: ghcr.io/<org>/<app>:<tag>
+#    - traefik labels (domenas, SSL, router = <projektas>-web)
+#    - cross-stack hostai PILNAI kvalifikuoti: core_postgresql, <proj>_redis
+#    - durable Redis (queue/session/reverb) → nuosavas redis servisas (ne core_redis)
 #    - tinklai: traefik-public, internal
 
-# 3. Pirmas deploy ant serverio:
-docker stack deploy -c docker-compose.yml my-app
+# 3. CI/CD (veidrodis natars/heroes/pickzy): GitHub Actions build → GHCR → SSH → swarm-deploy.sh
+#    Secrets repo'e: DEPLOY_KEY / DEPLOY_USER / DEPLOY_HOST
 
 # 4. Tolesni atnaujinimai — automatiškai:
-#    Push naują image → Shepherd per 15 min atnaujins servisą
+#    Push į main → Actions subuild'ina image, push į GHCR, docker stack deploy --with-registry-auth per SSH
 ```
 
 Srautas: `Traefik → App` (Varnish pridedamas projekto compose faile jei reikia)
@@ -263,11 +264,11 @@ Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
 ## Memory alokacija
 
 ```
-Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) + 128M (shepherd) = 5.6 GB
-Monitoring:  1G (prom) + 512M (grafana) + 256M (cadvisor) + 256M (alertmanager) + 256M (pg-exp) + 256M (dozzle) = 2.5 GB
-Mail:        2G (mailserver) = 2.0 GB
+Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) + 64M (socket-proxy) ≈ 5.6 GB
+Monitoring:  1G (prom) + 512M (grafana) + 128M (node-exp) + 256M×4 (cadvisor/alertmgr/pg-exp/dozzle) ≈ 2.7 GB
+Mail:        2G (mailserver — kai bus paleistas, dar ne)
 OS + Docker: ~2 GB
-Laisva:      ~4 GB (projektams)
+Laisva:      ~12 GB projektams (po upgrade į 24 GB RAM)
 ```
 
 ## Cron
