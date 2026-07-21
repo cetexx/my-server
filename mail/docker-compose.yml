@@ -18,9 +18,9 @@ services:
 
   mailserver:
     image: ghcr.io/docker-mailserver/docker-mailserver:14
-    hostname: mail.${DOMAIN}
+    hostname: mail.${MAIL_DOMAIN}
     environment:
-      OVERRIDE_HOSTNAME: mail.${DOMAIN}
+      OVERRIDE_HOSTNAME: mail.${MAIL_DOMAIN}
       ENABLE_SPAMASSASSIN: "1"
       ENABLE_CLAMAV: "0"
       ENABLE_FAIL2BAN: "0"
@@ -28,7 +28,7 @@ services:
       SSL_CERT_PATH: /etc/ssl/mail/certificate.crt
       SSL_KEY_PATH: /etc/ssl/mail/privatekey.key
       PERMIT_DOCKER: network
-      POSTMASTER_ADDRESS: postmaster@${DOMAIN}
+      POSTMASTER_ADDRESS: postmaster@${MAIL_DOMAIN}
     ports:
       - target: 25
         published: 25
@@ -47,7 +47,7 @@ services:
       - /opt/my-server/mailserver/state:/var/mail-state
       - /opt/my-server/mailserver/logs:/var/log/mail
       - /opt/my-server/mailserver/config:/tmp/docker-mailserver
-      - /opt/my-server/certs/mail.${DOMAIN}:/etc/ssl/mail:ro
+      - /opt/my-server/certs/mail.${MAIL_DOMAIN}:/etc/ssl/mail:ro
     networks:
       - internal
     deploy:
@@ -80,7 +80,10 @@ services:
       replicas: 1
       labels:
         - traefik.enable=true
-        - traefik.http.routers.roundcube.rule=Host(`mail.${DOMAIN}`)
+        # Webmail kiekvienam domenui savo login URL (mail.<domenas>). Traefik dėl šio
+        # router'io išduoda VIENĄ cert su abiem SAN'ais → mailserver'io TLS galioja abiem
+        # hostname'ams. Pridedant naują domeną — įrašyk dar vieną `|| Host(`mail.<domenas>`)`.
+        - traefik.http.routers.roundcube.rule=Host(`mail.natars.mobi`) || Host(`mail.xheroes.agency`)
         - traefik.http.routers.roundcube.entrypoints=websecure
         - traefik.http.routers.roundcube.tls.certresolver=letsencrypt
         - traefik.http.routers.roundcube.middlewares=rate-limit
