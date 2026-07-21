@@ -40,7 +40,21 @@ In Docker Swarm, services from different stacks communicate via external overlay
 - `core_traefik` — Traefik (for Prometheus metrics scraping on port 8082)
 - `core_playwright` — Headless browser from any stack
 
-Within the same stack, use just `<service>` (e.g., `prometheus` can reach `node-exporter` directly).
+Within the same stack, use just `<service>` — BUT only if that service name is UNIQUE across all stacks (see hazard below).
+
+### ⚠ Collision hazard (learned the hard way — natars, 2026-07-21)
+The short `<service>` alias is registered on the SHARED external `internal` network and is **NOT stack-isolated**. If two stacks each have a service named `redis` (e.g. `core_redis` + `natars_redis`), then `redis` resolves to **both** VIPs and round-robins — so ~half the connections hit the wrong server. natars used `REDIS_HOST=redis` → intermittent `WRONGPASS` against `core_redis` (different password). Hard rule:
+- In any project `.env` / config, cross-stack hosts are ALWAYS fully qualified: `REDIS_HOST=core_redis` (or `<proj>_redis`), `DB_HOST=core_postgresql`. **Never** bare `redis`/`app`/`db`/`api`/`cache`/`worker`/`web`.
+- Avoid generic compose service keys entirely. Audit: `grep -rE '_HOST=(redis|app|db|api|cache)$' /opt/*/.env` must be empty.
+
+### New-project onboarding checklist (before deploying project N)
+1. **Names**: no generic compose service keys; Traefik router/service/middleware label names = `<project>-<role>` (e.g. `natars-web`); reference shared middlewares as `rate-limit@swarm` / `admin-whitelist@swarm`.
+2. **Redis**: pure cache → `core_redis` with a UNIQUE key prefix; durable (queue/session/reverb) → **own** redis service `--maxmemory-policy noeviction` + own password + AOF (copy natars). `core_redis` is `allkeys-lru` — it silently evicts jobs/sessions, never put durable data there.
+3. **Postgres**: create user+DB ONLY via `./server.sh db create <name> <limit>` (never manual `CREATE USER`). Set `CONNECTION LIMIT` ≈ php-fpm pool + Horizon procs + 5 (≈20-25). Invariant: `SELECT sum(rolconnlimit) FROM pg_roles WHERE NOT rolsuper AND rolconnlimit>0` must stay ≤195 (max_connections 200 − reserved). Currently ~108.
+4. **Health checks**: the app image ships a Caddy `HEALTHCHECK` (`curl :2019/metrics`). Non-web services (horizon/scheduler/reverb/queue workers) MUST set `healthcheck: { disable: true }` or Swarm kills them (exit 137).
+5. **Resources**: every service needs `deploy.resources.limits.memory` (a leak with no limit can OOM the node and take down Postgres/Traefik).
+6. **Deploy**: mirror `natars` — CI builds → GHCR (`read:packages` pull-only token) → `scp compose` + `swarm-deploy.sh` over SSH. Give each app service a healthcheck so `start-first` rollback has a signal.
+7. **Post-deploy**: `docker service ls` desired==running; the `_HOST=` grep above is empty; router name carries the project prefix.
 
 ## Environment variables
 
