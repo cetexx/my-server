@@ -15,7 +15,9 @@ services:
       # "please enable `ping` to use health check" and the service
       # never converges.
       - --ping=true
-      - --providers.swarm.endpoint=unix:///var/run/docker.sock
+      # Per socket-proxy (read-only, filtruotas) — NE tiesiogiai unix socket'ą,
+      # kad kompromituotas Traefik negautų root-equivalent prieigos prie host'o.
+      - --providers.swarm.endpoint=tcp://core_socket-proxy:2375
       - --providers.swarm.exposedByDefault=false
       - --providers.swarm.network=traefik-public
       - --entrypoints.web.address=:80
@@ -47,7 +49,7 @@ services:
       timeout: 5s
       retries: 3
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Raw Docker socket PAŠALINTAS — Traefik discovery eina per core_socket-proxy.
       - /opt/my-server/traefik/acme:/acme
     networks:
       - traefik-public
