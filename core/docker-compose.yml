@@ -85,6 +85,42 @@ services:
         # Point it at the same admin port to silence the log spam.
         - traefik.http.services.core-traefik.loadbalancer.server.port=8080
 
+  # Read-only, filtruotas Docker API Traefik'ui. Kad kompromituotas internetui-atviras
+  # Traefik NEgautų pilno /var/run/docker.sock (root-equivalent → viso host'o perėmimas).
+  # Traefik jungiasi per tcp://core_socket-proxy:2375; POST=0 → jokių mutacijų/exec/secrets.
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      # GET-only, tik ko reikia Swarm provider'iui:
+      SWARM: 1
+      SERVICES: 1
+      TASKS: 1
+      NETWORKS: 1
+      NODES: 1
+      ENDPOINTS: 1
+      CONTAINERS: 1
+      INFO: 1
+      VERSION: 1
+      EVENTS: 1
+      PING: 1
+      # Viskas kita (EXEC, SECRETS, CONFIGS, IMAGES, VOLUMES + bet koks write) — deny:
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+
   postgresql:
     # Pinned to the exact point release — 17.9-alpine is the newest
     # 17.x alpine tag on Docker Hub at time of pin. Bump intentionally
