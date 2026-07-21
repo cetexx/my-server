@@ -80,10 +80,10 @@ services:
       replicas: 1
       labels:
         - traefik.enable=true
-        # Webmail kiekvienam domenui savo login URL (mail.<domenas>). Traefik dėl šio
-        # router'io išduoda VIENĄ cert su abiem SAN'ais → mailserver'io TLS galioja abiem
-        # hostname'ams. Pridedant naują domeną — įrašyk dar vieną `|| Host(`mail.<domenas>`)`.
-        - traefik.http.routers.roundcube.rule=Host(`mail.natars.mobi`) || Host(`mail.xheroes.agency`)
+        # Vienas neutralus webmail host visiems (mail.$MAIL_DOMAIN = mail.cetex.dev).
+        # Vartotojas jungiasi PILNU email adresu (info@natars.mobi, info@xheroes.agency).
+        # Nori vanity URL (mail.<projektas>)? Pridėk `|| Host(`mail.<domenas>`)` + cert SAN.
+        - traefik.http.routers.roundcube.rule=Host(`mail.${MAIL_DOMAIN}`)
         - traefik.http.routers.roundcube.entrypoints=websecure
         - traefik.http.routers.roundcube.tls.certresolver=letsencrypt
         - traefik.http.routers.roundcube.middlewares=rate-limit
