@@ -11,7 +11,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../.env" 2>/dev/null || true
 
-DOMAIN=${DOMAIN:-example.com}
+# Mailserver'io FQDN = mail.$DOMAIN. Naudojam MAIL_DOMAIN (cetex.dev), NE DOMAIN
+# (pickzy.app — jo paštas ant Google). Fallback į DOMAIN dėl senų setupų.
+DOMAIN=${MAIL_DOMAIN:-${DOMAIN:-example.com}}
 DKIM_KEYS_DIR="/opt/my-server/mailserver/config/opendkim/keys"
 
 get_mail_container() {
