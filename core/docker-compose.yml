@@ -123,6 +123,48 @@ services:
         reservations:
           memory: 16M
 
+  # Write-enabled Docker API proxy Portainer'iui. Skirtingai nuo Traefik read-only proxy —
+  # čia POST=1 (Portainer valdo servisus/konteinerius). Nauda vs raw socket: konteineryje
+  # nėra socket failo, atskiras procesas ant internal, API-lygio filtras. NE sidabrinė kulka
+  # (Portainer su write ~= host root), bet defense-in-depth + IP-whitelist + auth apsaugo.
+  portainer-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      SERVICES: 1
+      TASKS: 1
+      NODES: 1
+      SWARM: 1
+      SECRETS: 1
+      CONFIGS: 1
+      PLUGINS: 1
+      SYSTEM: 1
+      INFO: 1
+      VERSION: 1
+      EVENTS: 1
+      PING: 1
+      DISTRIBUTION: 1
+      EXEC: 1
+      POST: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+
   postgresql:
     # Pinned to the exact point release — 17.9-alpine is the newest
     # 17.x alpine tag on Docker Hub at time of pin. Bump intentionally
@@ -187,16 +229,17 @@ services:
     # Portainer fatals "database schema version does not align with
     # server version" on startup.
     image: portainer/portainer-ce:2.33.1
-    command: -H unix:///var/run/docker.sock
+    # Docker API per write socket-proxy (ne raw socket) — žr. portainer-socket-proxy aukščiau.
+    command: -H tcp://core_portainer-socket-proxy:2375
     # No compose-level healthcheck — the portainer image ships no wget
     # or curl, and shell-less distroless variants leave nothing else
     # usable. If Portainer's HTTP is down, swarm restarts are overkill;
     # Traefik will stop routing to it regardless.
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - /opt/my-server/portainer/data:/data
     networks:
       - traefik-public
+      - internal
     deploy:
       mode: replicated
       replicas: 1

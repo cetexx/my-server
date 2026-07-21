@@ -18,7 +18,9 @@ services:
       # DMS skaito Traefik acme.json TIESIOGIAI (žr. volumes). mail.cetex.dev cert'ą
       # gauna Roundcube router'is (Host(mail.cetex.dev)). Jokio certs-dumper / ordering.
       SSL_TYPE: letsencrypt
-      PERMIT_DOCKER: network
+      # `connected-networks` = pasitiki tik prijungtų tinklų (internal) subnet'u, ne visu
+      # 172.16.0.0/12 (`network`). alertmanager (ant internal) vis tiek gali siųsti be auth.
+      PERMIT_DOCKER: connected-networks
       POSTMASTER_ADDRESS: postmaster@${MAIL_DOMAIN}
     ports:
       - target: 25

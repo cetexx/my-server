@@ -174,10 +174,14 @@ services:
     # Pinned to the latest v8 patch; Dozzle ships frequent UI changes
     # on the floating `:v8` tag, so always pin to a concrete version.
     image: amir20/dozzle:v8.14.9
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # Docker prieiga per read-only socket-proxy (ne raw socket). SVARBU: `:ro` ant raw
+    # socket mount'o NEapsaugo — Docker API rašymas eina per socket'ą nepaisant ro vėliavos;
+    # tik proxy su POST=0 realiai blokuoja mutacijas.
+    environment:
+      DOCKER_HOST: tcp://core_socket-proxy:2375
     networks:
       - traefik-public
+      - internal
     deploy:
       mode: replicated
       replicas: 1
