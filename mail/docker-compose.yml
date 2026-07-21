@@ -1,21 +1,6 @@
 version: "3.8"
 
 services:
-  certs-dumper:
-    image: ldez/traefik-certs-dumper:v2.8.3
-    command:
-      - file
-      - --source=/acme/acme.json
-      - --dest=/certs
-      - --domain-subdir
-      - --watch
-    volumes:
-      - /opt/my-server/traefik/acme:/acme:ro
-      - /opt/my-server/certs:/certs
-    deploy:
-      mode: replicated
-      replicas: 1
-
   mailserver:
     # v15: SpamAssassin/Amavis/Postgrey pašalinti → Rspamd (spam + DKIM signing).
     image: ghcr.io/docker-mailserver/docker-mailserver:15.1.0
@@ -30,9 +15,9 @@ services:
       ENABLE_OPENDMARC: "0"
       ENABLE_CLAMAV: "0"
       ENABLE_FAIL2BAN: "0"
-      SSL_TYPE: manual
-      SSL_CERT_PATH: /etc/ssl/mail/certificate.crt
-      SSL_KEY_PATH: /etc/ssl/mail/privatekey.key
+      # DMS skaito Traefik acme.json TIESIOGIAI (žr. volumes). mail.cetex.dev cert'ą
+      # gauna Roundcube router'is (Host(mail.cetex.dev)). Jokio certs-dumper / ordering.
+      SSL_TYPE: letsencrypt
       PERMIT_DOCKER: network
       POSTMASTER_ADDRESS: postmaster@${MAIL_DOMAIN}
     ports:
@@ -53,7 +38,7 @@ services:
       - /opt/my-server/mailserver/state:/var/mail-state
       - /opt/my-server/mailserver/logs:/var/log/mail
       - /opt/my-server/mailserver/config:/tmp/docker-mailserver
-      - /opt/my-server/certs/mail.${MAIL_DOMAIN}:/etc/ssl/mail:ro
+      - /opt/my-server/traefik/acme/acme.json:/etc/letsencrypt/acme.json:ro
     networks:
       - internal
     deploy:
