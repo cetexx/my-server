@@ -1,0 +1,65 @@
+version: "3.8"
+
+# cetex.dev landing page + redirect'ai.
+# - cetex.dev            → mini HTML puslapis (nginx)
+# - www.cetex.dev        → 301 į https://cetex.dev
+# - bare IP / nežinomas host → 302 į https://cetex.dev (catch-all, priority 1)
+#
+# Catch-all TIK ant websecure (NE web), kad neperimtų LE HTTP-01 challenge'ų
+# (/.well-known/acme-challenge/ eina per port 80) → kitaip sulaužytų visų domenų certus.
+# http://<IP> atvejį sutvarko globalus Traefik http→https redirect (→ https://<IP> → catch-all).
+
+services:
+  web:
+    image: nginx:1.27-alpine
+    configs:
+      - source: landing-index
+        target: /usr/share/nginx/html/index.html
+    networks:
+      - traefik-public
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 8M
+      labels:
+        - traefik.enable=true
+
+        # --- cetex.dev landing ---
+        - traefik.http.routers.cetex-landing.rule=Host(`cetex.dev`)
+        - traefik.http.routers.cetex-landing.entrypoints=websecure
+        - traefik.http.routers.cetex-landing.tls.certresolver=letsencrypt
+        - traefik.http.routers.cetex-landing.service=cetex-landing
+        - traefik.http.services.cetex-landing.loadbalancer.server.port=80
+
+        # --- www.cetex.dev → https://cetex.dev ---
+        - traefik.http.middlewares.cetex-www.redirectregex.regex=^https?://www\.cetex\.dev/(.*)
+        - traefik.http.middlewares.cetex-www.redirectregex.replacement=https://cetex.dev/$${1}
+        - traefik.http.middlewares.cetex-www.redirectregex.permanent=true
+        - traefik.http.routers.cetex-www.rule=Host(`www.cetex.dev`)
+        - traefik.http.routers.cetex-www.entrypoints=websecure
+        - traefik.http.routers.cetex-www.tls.certresolver=letsencrypt
+        - traefik.http.routers.cetex-www.middlewares=cetex-www
+        - traefik.http.routers.cetex-www.service=cetex-landing
+
+        # --- catch-all: bare IP / nežinomas host → https://cetex.dev (websecure only, priority 1) ---
+        - traefik.http.middlewares.to-cetex.redirectregex.regex=.*
+        - traefik.http.middlewares.to-cetex.redirectregex.replacement=https://cetex.dev/
+        - traefik.http.routers.cetex-catchall.rule=PathPrefix(`/`)
+        - traefik.http.routers.cetex-catchall.priority=1
+        - traefik.http.routers.cetex-catchall.entrypoints=websecure
+        - traefik.http.routers.cetex-catchall.tls=true
+        - traefik.http.routers.cetex-catchall.middlewares=to-cetex
+        - traefik.http.routers.cetex-catchall.service=cetex-landing
+
+configs:
+  landing-index:
+    file: ./html/index.html
+    name: landing-index-v1
+
+networks:
+  traefik-public:
+    external: true
