@@ -67,7 +67,7 @@ All in `.env` (copied from `.env.example`). Key vars:
 
 ## Deploy mechanism
 
-`./deploy.sh <stack>` does: `cd <stack>/ && source ../.env && docker stack deploy -c docker-compose.yml <stack>`. Checks for `.env` existence before sourcing. Relative config file paths in compose files are resolved relative to the stack directory.
+`./deploy.sh <stack>` does: `cd <stack>/; set -a; source ../.env; set +a; docker stack deploy -c docker-compose.yml <stack>`. The `set -a` is **essential** — plain `source` does NOT export the vars, so `docker stack deploy` would interpolate empty `${VARS}` and bring the stack up with blank config. Checks for `.env` before sourcing. Relative config paths resolve relative to the stack directory.
 
 ## Scripts
 
@@ -104,7 +104,8 @@ Total limits: ~11 GB out of 24 GB. ~11 GB free for projects, ~2 GB for OS/Docker
 - Swarm config files are immutable — changing a config requires redeploying the stack (Docker creates a new config version)
 - Health checks use container-level commands (not Swarm-level) — they trigger container restarts, not service rescheduling
 - Rocky Linux has SELinux enabled — Docker volumes need `svirt_sandbox_file_t` context (handled by `setup.sh`)
-- `alertmanager.yml` has hardcoded `smtp_from: alertmanager@example.com` — must be manually updated to match actual domain (Docker configs don't support env var substitution)
+- `alertmanager.yml` has hardcoded `smtp_from: alertmanager@pickzy.app` — must be manually updated to match actual domain (Docker configs don't support env var substitution)
+- **NEVER** deploy manually with `source .env && docker stack deploy` — `source` doesn't export, so compose sees empty `${DOMAIN}` / `${POSTGRES_*}` / `${GRAFANA_DB_PASSWORD}` and the stack comes up mis-wired (this took down `core_postgresql` and broke Grafana DB auth on 2026-07-21). **Always** use `./deploy.sh <stack>` — it does `set -a; source; set +a` correctly.
 
 ## Language
 
