@@ -55,6 +55,15 @@ services:
         - traefik.http.routers.cetex-catchall.middlewares=to-cetex
         - traefik.http.routers.cetex-catchall.service=cetex-landing
 
+        # --- http://<IP> → tiesiai https://cetex.dev (be tarpinio https://<IP> cert warning) ---
+        # Pagaunam TIK IP host'us ant web (:80), kad realių domenų http→https neliestų
+        # ir ACME HTTP-01 (eina per domeno host) nepaliestų.
+        - traefik.http.routers.cetex-ip-http.rule=Host(`176.223.132.42`) || Host(`212.24.104.223`)
+        - traefik.http.routers.cetex-ip-http.priority=2
+        - traefik.http.routers.cetex-ip-http.entrypoints=web
+        - traefik.http.routers.cetex-ip-http.middlewares=to-cetex
+        - traefik.http.routers.cetex-ip-http.service=cetex-landing
+
 configs:
   landing-index:
     file: ./html/index.html
