@@ -27,9 +27,30 @@ services:
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
       - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      # ANTRAS sprendiklis — DNS-01 per Cloudflare, TIK wildcard sertifikatams.
+      # Esamas `letsencrypt` (HTTP-01) NELIEČIAMAS: visi kiti projektai lieka ant jo.
+      #
+      # Kodėl reikėjo: HTTP-01 wildcard sertifikato neišduoda iš principo, o
+      # natars.mobi pasauliai gyvena po `sN.` subdomenais. Be `*.natars.mobi`
+      # kiekvienas naujas pasaulis reikalaudavo ranka įrašyti hostą į DU maršrutus
+      # ir laukti naujo sertifikato.
+      - --certificatesresolvers.le-dns.acme.email=${ACME_EMAIL}
+      # ATSKIRA saugykla — kad DNS-01 niekaip nepaliestų veikiančių HTTP-01
+      # sertifikatų `acme.json` faile (17 jų, visi kiti projektai).
+      - --certificatesresolvers.le-dns.acme.storage=/acme/acme-dns.json
+      - --certificatesresolvers.le-dns.acme.dnschallenge=true
+      - --certificatesresolvers.le-dns.acme.dnschallenge.provider=cloudflare
+      # Iššūkio įrašo tikrinimas TIESIOGIAI viešuose serveriuose: host'o resolveris
+      # gali laikyti pasenusį atsakymą keše, ir propagacijos laukimas užstrigtų.
+      - --certificatesresolvers.le-dns.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
       - --metrics.prometheus=true
       - --entrypoints.metrics.address=:8082
       - --log.level=INFO
+    environment:
+      # DNS-01 (`le-dns`) prisijungimas. Žetonas apribotas iki Zone:DNS:Edit +
+      # Zone:Read TIK `natars.mobi` zonai; reikšmė guli /opt/my-server/.env
+      # (teisės 600, ne git'e). Traefik jį paduoda lego bibliotekai.
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
     ports:
       - target: 80
         published: 80
