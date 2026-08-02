@@ -219,9 +219,9 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 2G
+          memory: 6G
         reservations:
-          memory: 512M
+          memory: 1G
 
   redis:
     image: redis:7.4.8-alpine  # latest within 7.4 at time of pin
@@ -357,7 +357,7 @@ configs:
   # empty and was never refreshable; `-v2` fixes that.
   pg-tuning:
     file: ./postgresql/postgresql.conf
-    name: pg-tuning-v3
+    name: pg-tuning-v4
 
 networks:
   traefik-public:
