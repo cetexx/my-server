@@ -76,6 +76,22 @@ services:
       ROUNDCUBEMAIL_DEFAULT_PORT: "143"
       ROUNDCUBEMAIL_SMTP_SERVER: tls://mail.${MAIL_DOMAIN}
       ROUNDCUBEMAIL_SMTP_PORT: "587"
+      # Image'as pats įjungia archive ir zipdownload; čia pridedami likusieji.
+      # Jie jau guli konteineryje — buvo tiesiog neaktyvūs ($config['plugins']
+      # numatytai tuščias), todėl webmail atrodė plikesnis, nei galėtų.
+      #
+      # managesieve (filtrai, „išvykęs" atsakiklis) SĄMONINGAI nepridėtas:
+      # mailserver'yje ENABLE_MANAGESIEVE neįjungtas ir portas 4190 neklauso,
+      # tad plugin'as tik rodytų neveikiantį skirtuką.
+      # password taip pat ne: jam reikia atskiro draiverio prie
+      # docker-mailserver, o slaptažodį keičia ./server.sh mail passwd.
+      ROUNDCUBEMAIL_PLUGINS: "archive,zipdownload,markasjunk,attachment_reminder,emoticons,vcard_attachments,newmail_notifier,identicon,hide_blockquote,subscriptions_option"
+    volumes:
+      # Image'o oficialus kabliukas: entrypoint'as įtraukia KIEKVIENĄ .php failą
+      # iš šio katalogo į konfigūracijos galą. Taip nustatymai, kurių nėra tarp
+      # ROUNDCUBEMAIL_* kintamųjų (pvz. htmleditor), pasiekiami neperrašant
+      # jokio image'o failo ir nenukenčiant per atnaujinimus.
+      - /opt/my-server/mail/roundcube:/var/roundcube/config:ro
     networks:
       - traefik-public
       - internal
