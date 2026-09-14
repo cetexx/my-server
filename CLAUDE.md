@@ -10,8 +10,11 @@ Four Docker Swarm infrastructure stacks sharing two overlay networks (`traefik-p
 
 - **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), docker-socket-proxy (filtered read-only Docker API for Traefik)
 - **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
-- **mail** — docker-mailserver **v15** (Rspamd for spam + DKIM), Roundcube webmail at `mail.cetex.dev`. TLS read directly from Traefik `acme.json` (`SSL_TYPE=letsencrypt`, no certs-dumper). One instance serves natars.mobi, xheroes.agency, cetex.dev.
+- **mail** — docker-mailserver **v15** (Rspamd for spam + DKIM), Roundcube webmail at `mail.cetex.dev`. TLS read directly from Traefik `acme.json` (`SSL_TYPE=letsencrypt`, no certs-dumper). One instance serves natars.mobi, xheroes.agency, cetex.dev — plus airsoftpunks.lt for DKIM signing ONLY (no mailboxes; its inbound mail is on Google Workspace).
 - **landing** — nginx static page at `cetex.dev` + Traefik redirects (www→https, bare server-IP→`https://cetex.dev`)
+
+Project stacks currently deployed alongside these: `pickzy`, `heroes`, `lvl`,
+`airsoftpunks` (Nuxt 3 static + one PHP endpoint; see its repo's `docker-compose.prod.yml`).
 
 Projects live in their own repositories and are deployed independently via CI/CD: GitHub Actions builds an image → pushes to GHCR → SSHes in and runs the project's `swarm-deploy.sh` (`docker stack deploy --with-registry-auth`). No auto-update daemon.
 
@@ -94,6 +97,32 @@ Then add DNS (DNS-only / grey cloud) for that domain: `MX → mail.cetex.dev` (p
 - Rspamd signs only **authenticated (587) or local** mail — apps MUST send via authenticated SMTP submission on 587.
 
 **App SMTP** (Laravel): `MAIL_HOST=mail.cetex.dev MAIL_PORT=587 MAIL_ENCRYPTION=tls MAIL_USERNAME=no-reply@<domain> MAIL_PASSWORD=<pw>`.
+
+### ⚠ Domains whose mail lives ELSEWHERE (learned the hard way — airsoftpunks.lt, 2026-09-14)
+
+A domain can need our DKIM **without** having mailboxes here — e.g. `airsoftpunks.lt`,
+whose inbound mail is on Google Workspace (`MX → smtp.google.com`) while its website
+forms still send through us as `noreply@airsoftpunks.lt`.
+
+For such a domain: run `mail add-domain` (DKIM only) and **NEVER `mail add <anything>@<domain>`**.
+Creating a single mailbox puts the domain into `virtual_mailbox_domains`, Postfix then
+considers itself the final destination for the WHOLE domain, and mail to every other
+address there stops being relayed to Google — it is rejected as "User unknown in virtual
+mailbox table" instead. That silently hijacks the domain's inbound mail.
+
+So the app's SMTP credential must belong to a domain we really host:
+`SMTP_USER=airsoftpunks@cetex.dev` while `From: noreply@airsoftpunks.lt`. The mismatch is
+fine and intentional — `dkim_signing.conf` has `use_domain = "header"` plus
+`allow_username_mismatch = true`, so Rspamd still signs with the **From** domain's key.
+`SPOOF_PROTECTION` is unset (Postfix has no `sender_login_maps`), so the mismatch is
+accepted at submission.
+
+Also note what port 25 costs. Submitting unauthenticated via `PERMIT_DOCKER` works, but
+such mail goes through the full Rspamd filter. A contact form that puts the visitor's
+address in `Reply-To` while `From` and `To` share the domain scores `SPOOF_REPLYTO`
+(+6.00) and lands at ~8.2/11 → "add header" → likely Gmail spam. Over authenticated 587
+the existing `authenticated { groups_enabled = [dkim] }` setting skips spam checks
+entirely and the same message scores 0.00/11.
 
 **PTR:** set at serveriai.lt self-service for IP 176 → `mail.cetex.dev` (ideally matching HELO). Target mail-tester.com ≥8/10; below → hosted SMTP (Postmark/Mailgun) for OTP/password-reset. IP reputation warms over 3-6 weeks.
 
