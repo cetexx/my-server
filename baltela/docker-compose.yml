@@ -1,0 +1,62 @@
+# baltela.lt — statinis „Tinklapis tvarkomas" puslapis.
+#
+# Kodėl čia NĖRA nei savo image'o, nei CI, nei GHCR (skirtingai nuo
+# airsoftpunks ir zombiufabrikas): visa svetainė yra 139 baitų index.html ir du
+# JPEG. Nekeista nuo 2021 m. gegužės ir neturi repo. Build'o grandinė tokiam
+# turiniui kainuotų daugiau priežiūros, nei duotų naudos.
+#
+# Turinys guli /opt/baltela/site ir prijungiamas read-only. Norint jį pakeisti
+# — tiesiog pakeisk failą serveryje; konteinerio net perkrauti nereikia.
+#
+# Naudojamas standartinis nginx image'as be jokios savo konfigūracijos: jo
+# numatytieji nustatymai statiniam index.html yra tiksliai tai, ko reikia.
+
+services:
+  baltela-web:
+    image: nginx:1.29-alpine
+    volumes:
+      - /opt/baltela/site:/usr/share/nginx/html:ro
+    networks:
+      - traefik-public
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          # Vienas puslapis ir du paveikslėliai. 32M čia yra dosnu.
+          memory: 32M
+        reservations:
+          memory: 8M
+      update_config:
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: any
+        delay: 5s
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.http.routers.baltela-web.rule=Host(`baltela.lt`)
+        - traefik.http.routers.baltela-web.entrypoints=websecure
+        - traefik.http.routers.baltela-web.tls.certresolver=letsencrypt
+        - traefik.http.routers.baltela-web.middlewares=rate-limit@swarm
+        # Prioritetas 5: `landing_web` turi catch-all su prioritetu 1, metantį
+        # viską į cetex.dev. Be aukštesnio prioriteto domenas tyliai
+        # redirect'intųsi ten, nors konteineris būtų sveikas.
+        - traefik.http.routers.baltela-web.priority=5
+        - traefik.http.services.baltela-web.loadbalancer.server.port=80
+
+        # www → be www.
+        - traefik.http.routers.baltela-www.rule=Host(`www.baltela.lt`)
+        - traefik.http.routers.baltela-www.entrypoints=websecure
+        - traefik.http.routers.baltela-www.tls.certresolver=letsencrypt
+        - traefik.http.routers.baltela-www.middlewares=baltela-www-redirect
+        - traefik.http.routers.baltela-www.service=baltela-web
+        - traefik.http.routers.baltela-www.priority=5
+        - traefik.http.middlewares.baltela-www-redirect.redirectregex.regex=^https://www\.baltela\.lt/(.*)
+        - traefik.http.middlewares.baltela-www-redirect.redirectregex.replacement=https://baltela.lt/$${1}
+        - traefik.http.middlewares.baltela-www-redirect.redirectregex.permanent=true
+
+networks:
+  traefik-public:
+    external: true

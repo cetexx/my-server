@@ -1,0 +1,20 @@
+# Papildoma Dovecot konfigūracija. docker-mailserver ją prideda prie savo
+# sugeneruotos konfigūracijos paleidžiant konteinerį.
+
+# Numatytoji DMS reikšmė yra 10M, ir ji atmeta BET KURĮ didesnį laišką su
+# klaida „[LIMIT] Mail size is larger than the maximum size allowed by server
+# configuration". Rasta perkeliant baltela.lt archyvą: 28 laiškai iš 6 623
+# viršijo 10 MB (didžiausias 65 MB) ir buvo atmesti — perkėlimas būtų juos
+# tyliai pametęs.
+#
+# Šis parametras riboja tik laiško SAUGOJIMĄ (IMAP APPEND ir LMTP pristatymą).
+# Tai, ką serveris priima iš išorės, riboja Postfix `message_size_limit`, kuris
+# lieka 10 MB — tad ši reikšmė nedidina gaunamo šlamšto ar disko rizikos.
+#
+# BŪTINAI `plugin { }` bloke: quota_max_mail_size yra plugin'o parametras, ir
+# nurodytas aukščiausiame lygyje jis tyliai ignoruojamas — `doveconf` jo net
+# nerodo, o galioja lieka 90-quota.conf reikšmė. Pirmas bandymas būtent taip
+# ir nepavyko.
+plugin {
+  quota_max_mail_size = 100M
+}
