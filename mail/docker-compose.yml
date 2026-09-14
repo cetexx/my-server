@@ -61,9 +61,20 @@ services:
       ROUNDCUBEMAIL_DB_NAME: roundcube
       ROUNDCUBEMAIL_DB_USER: roundcube
       ROUNDCUBEMAIL_DB_PASSWORD: ${ROUNDCUBE_DB_PASSWORD}
-      ROUNDCUBEMAIL_DEFAULT_HOST: tls://mailserver
+      # Jungiamasi vardu `mail.${MAIL_DOMAIN}`, o NE `mailserver`, ir tai ne
+      # kosmetika. Mailserver'io sertifikatas išduotas mail.cetex.dev; jungiantis
+      # trumpuoju serviso vardu TLS rankos paspaudimas krisdavo dar PRIEŠ
+      # slaptažodžio tikrinimą:
+      #
+      #   Peer certificate CN=`mail.cetex.dev' did not match expected CN=`mailserver'
+      #   IMAP Error: Unable to negotiate TLS
+      #
+      # Dėl to prisijungti prie webmail buvo neįmanoma NĖ VIENA paskyra.
+      # Vardas rezolvinasi viduje, nes mailserver'io `hostname:` būtent toks,
+      # tad srautas lieka overlay tinkle ir sertifikatas galioja.
+      ROUNDCUBEMAIL_DEFAULT_HOST: tls://mail.${MAIL_DOMAIN}
       ROUNDCUBEMAIL_DEFAULT_PORT: "143"
-      ROUNDCUBEMAIL_SMTP_SERVER: tls://mailserver
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://mail.${MAIL_DOMAIN}
       ROUNDCUBEMAIL_SMTP_PORT: "587"
     networks:
       - traefik-public
