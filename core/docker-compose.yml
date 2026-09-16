@@ -90,9 +90,21 @@ services:
         - traefik.enable=true
         # Admin IP whitelist middleware (naudojamas visų admin servisų)
         - traefik.http.middlewares.admin-whitelist.ipallowlist.sourcerange=${ADMIN_WHITELIST_IPS}
-        # Rate limit middleware viešiems servisams (100 req/s, burst 50)
-        - traefik.http.middlewares.rate-limit.ratelimit.average=100
-        - traefik.http.middlewares.rate-limit.ratelimit.burst=50
+        # Rate limit middleware viešiems servisams (200 req/s, burst 300).
+        #
+        # Buvo 100/s su burst 50 ir tai laužė normalų naršymą, o ne atakas.
+        # Vienas airsoftpunks.lt puslapio atidarymas duoda ~190 užklausų
+        # (Nuxt chunk'ai, 30+ SVG raštų, šriftai), kurias naršyklė per HTTP/2
+        # paleidžia beveik vienu metu. Riba skaičiuojama VIENAM IP, tad
+        # lankytojas atsitrenkdavo į ją pats vienas: 80 lygiagrečių užklausų
+        # duodavo 7x 429, konsolėje 11 klaidų, nepasikraudavo dalis CSS ir
+        # fono paveikslėlių.
+        #
+        # burst=300 telpa visas puslapis su atsarga, average=200/s leidžia
+        # kibirui prisipildyti iki kito perėjimo. Vieno IP užtvindymą vis tiek
+        # stabdo, o nuo paskirstytos atakos per IP riba ir taip negelbsti.
+        - traefik.http.middlewares.rate-limit.ratelimit.average=200
+        - traefik.http.middlewares.rate-limit.ratelimit.burst=300
         - traefik.http.middlewares.rate-limit.ratelimit.period=1s
         # Dashboard
         - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)
