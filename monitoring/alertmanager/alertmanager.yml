@@ -3,7 +3,7 @@ global:
   smtp_smarthost: 'mail_mailserver:25'
   # Domenas, kurį tvarko šio serverio mailserver (DKIM/SPF/DMARC sutvarkyti) — kad
   # Gmail nepriimtų kaip spoof (example.com SPF -all → hard-fail, alertai tyliai krisdavo).
-  smtp_from: 'alertmanager@pickzy.app'
+  smtp_from: 'alertmanager@cetex.dev'       # SPF ip4:176.223.132.42 + Rspamd DKIM; pickzy.app is Google-only
   smtp_require_tls: false
 
 route:
@@ -15,8 +15,7 @@ route:
 
   routes:
     # Critical — siųsti iš karto
-    - match:
-        severity: critical
+    - matchers: ['severity="critical"']
       group_wait: 10s
       repeat_interval: 1h
       receiver: 'email'
@@ -31,8 +30,6 @@ receivers:
 
 inhibit_rules:
   # Jei critical aktyvus — nesiųsti warning to paties alerto
-  - source_match:
-      severity: 'critical'
-    target_match:
-      severity: 'warning'
+  - source_matchers: ['severity="critical"']
+    target_matchers: ['severity="warning"']
     equal: ['alertname']

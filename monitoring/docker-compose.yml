@@ -43,7 +43,7 @@ services:
     # Bumped to 13.x: per upstream 12.x→13.x migration guide, the
     # schema auto-upgrades cleanly on PostgreSQL. Main consumer-side
     # change is React 19, which only affects custom plugins (none here).
-    image: grafana/grafana:13.0.1
+    image: grafana/grafana:13.3.0
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
@@ -93,7 +93,7 @@ services:
         - traefik.http.services.grafana.loadbalancer.server.port=3000
 
   node-exporter:
-    image: prom/node-exporter:v1.9.1
+    image: prom/node-exporter:v1.12.1
     command:
       - --path.rootfs=/host
       - --path.procfs=/host/proc
@@ -122,7 +122,7 @@ services:
           memory: 256M
 
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.17.1
+    image: prometheuscommunity/postgres-exporter:v0.20.1
     environment:
       DATA_SOURCE_URI: core_postgresql:5432/postgres?sslmode=disable
       DATA_SOURCE_USER: postgres_exporter
@@ -139,7 +139,7 @@ services:
           memory: 64M
 
   alertmanager:
-    image: prom/alertmanager:v0.28.1
+    image: prom/alertmanager:v0.34.2
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
@@ -171,14 +171,23 @@ services:
         - traefik.http.services.alertmanager.loadbalancer.server.port=9093
 
   dozzle:
-    # Pinned to the latest v8 patch; Dozzle ships frequent UI changes
-    # on the floating `:v8` tag, so always pin to a concrete version.
-    image: amir20/dozzle:v8.14.9
+    # Pinned to a concrete v11 patch; Dozzle ships frequent UI changes
+    # on floating tags, so always pin to a concrete version.
+    image: amir20/dozzle:v11.4.1
     # Docker prieiga per read-only socket-proxy (ne raw socket). SVARBU: `:ro` ant raw
     # socket mount'o NEapsaugo — Docker API rašymas eina per socket'ą nepaisant ro vėliavos;
     # tik proxy su POST=0 realiai blokuoja mutacijas.
     environment:
       DOCKER_HOST: tcp://core_socket-proxy:2375
+      DOZZLE_DISABLE_SETUP_WIZARD: "true"     # no /data volume -> every restart would be a "fresh install"
+      DOZZLE_IMAGE_CHECK_MODE: "off"          # needs IMAGES on the proxy (denied) + outbound calls
+      DOZZLE_NO_ANALYTICS: "true"
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     networks:
       - traefik-public
       - internal
@@ -216,7 +225,7 @@ configs:
     name: alert-rules-v2
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
-    name: alertmanager-config-v3
+    name: alertmanager-config-v4
   grafana-datasource:
     file: ./grafana/provisioning/datasources/datasource.yml
     name: grafana-datasource-v2

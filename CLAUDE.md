@@ -141,7 +141,7 @@ Total limits: ~11 GB out of 24 GB. ~11 GB free for projects, ~2 GB for OS/Docker
 - Swarm config files are immutable — changing a config requires redeploying the stack (Docker creates a new config version)
 - Health checks use container-level commands (not Swarm-level) — they trigger container restarts, not service rescheduling
 - Rocky Linux has SELinux enabled — Docker volumes need `svirt_sandbox_file_t` context (handled by `setup.sh`)
-- `alertmanager.yml` has hardcoded `smtp_from: alertmanager@pickzy.app` — must be manually updated to match actual domain (Docker configs don't support env var substitution)
+- `alertmanager.yml` sends as `smtp_from: alertmanager@cetex.dev` (2026-11-06; was `@pickzy.app`, whose SPF is Google-only and has no Rspamd DKIM key here, so every alert failed DMARC). Docker configs don't substitute env vars, so the address is hardcoded — change it there if the mail domain ever changes.
 - **NEVER** deploy manually with `source .env && docker stack deploy` — `source` doesn't export, so compose sees empty `${DOMAIN}` / `${POSTGRES_*}` / `${GRAFANA_DB_PASSWORD}` and the stack comes up mis-wired (this took down `core_postgresql` and broke Grafana DB auth on 2026-07-21). **Always** use `./deploy.sh <stack>` — it does `set -a; source; set +a` correctly.
 
 ## Language

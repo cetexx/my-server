@@ -2,12 +2,12 @@ version: "3.8"
 
 services:
   traefik:
-    # Pinned to the latest v3.6 patch. Floating `:v3` silently advanced
+    # Pinned to the latest v3.7 patch. Floating `:v3` silently advanced
     # major lines in the past and introduced Docker API incompatibilities
     # — a `docker stack deploy` once pulled a newer image that couldn't
     # talk to the local daemon. Bump this pin intentionally when
     # upgrading; don't rely on the tag moving.
-    image: traefik:v3.6.14
+    image: traefik:v3.7.17
     command:
       - --api.dashboard=true
       # `ping` exposes /ping for the built-in `traefik healthcheck` CLI;
@@ -44,7 +44,9 @@ services:
       # gali laikyti pasenusį atsakymą keše, ir propagacijos laukimas užstrigtų.
       - --certificatesresolvers.le-dns.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
       - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=metrics      # serve /metrics on :8082 (what Prometheus scrapes); was 404
       - --entrypoints.metrics.address=:8082
+      - --global.aliasHeadersStrategy=keep            # silences 3.7's new startup warning; same behaviour as today
       - --log.level=INFO
     environment:
       # DNS-01 (`le-dns`) prisijungimas. Žetonas apribotas iki Zone:DNS:Edit +
@@ -124,7 +126,7 @@ services:
   # Traefik NEgautų pilno /var/run/docker.sock (root-equivalent → viso host'o perėmimas).
   # Traefik jungiasi per tcp://core_socket-proxy:2375; POST=0 → jokių mutacijų/exec/secrets.
   socket-proxy:
-    image: tecnativa/docker-socket-proxy:0.3.0
+    image: tecnativa/docker-socket-proxy:v0.5.0
     environment:
       # GET-only, tik ko reikia Swarm provider'iui:
       SWARM: 1
@@ -161,7 +163,7 @@ services:
   # nėra socket failo, atskiras procesas ant internal, API-lygio filtras. NE sidabrinė kulka
   # (Portainer su write ~= host root), bet defense-in-depth + IP-whitelist + auth apsaugo.
   portainer-socket-proxy:
-    image: tecnativa/docker-socket-proxy:0.3.0
+    image: tecnativa/docker-socket-proxy:v0.5.0
     environment:
       CONTAINERS: 1
       IMAGES: 1
@@ -261,7 +263,7 @@ services:
     # was migrated by a previous newer Portainer at some point — older
     # Portainer fatals "database schema version does not align with
     # server version" on startup.
-    image: portainer/portainer-ce:2.33.1
+    image: portainer/portainer-ce:2.45.3      # current LTS; BoltDB migration is one-way (rollback = /data tar)
     # Docker API per write socket-proxy (ne raw socket) — žr. portainer-socket-proxy aukščiau.
     command: -H tcp://core_portainer-socket-proxy:2375
     # No compose-level healthcheck — the portainer image ships no wget
@@ -288,9 +290,7 @@ services:
         - traefik.http.services.portainer.loadbalancer.server.port=9000
 
   adminer:
-    # 4.8.1 is the newest `standalone` variant available on Docker Hub
-    # (4.9+ only ships the fpm+nginx variants at time of pin).
-    image: adminer:4.8.1-standalone
+    image: adminer:6.3.0-standalone           # 4.x removed upstream; PG18 supported
     # No compose-level healthcheck. adminer:4-standalone runs PHP's
     # built-in dev server which handles probe requests poorly enough
     # to crash the container; swarm restart loop then makes it worse.
@@ -298,7 +298,6 @@ services:
     # routing without Docker restarting the process.
     environment:
       ADMINER_DEFAULT_SERVER: core_postgresql
-      ADMINER_DESIGN: dracula
     networks:
       - traefik-public
       - internal
@@ -317,11 +316,10 @@ services:
     # Pinned to a concrete release tag. browserless pushes `:latest`
     # over any backward-incompatible API change without a heads-up, so
     # always reference the version tag directly. Bump intentionally.
-    image: ghcr.io/browserless/chromium:v2.44.0
+    image: ghcr.io/browserless/chromium:v2.59.0
     environment:
-      MAX_CONCURRENT_SESSIONS: "5"
-      MAX_QUEUE_LENGTH: "10"
-      DEFAULT_LAUNCH_ARGS: '["--disable-gpu","--no-sandbox","--disable-dev-shm-usage"]'
+      CONCURRENT: "5"                         # v2 names; MAX_* were v1 (MAX_QUEUE_LENGTH was never read)
+      QUEUED: "10"
       TIMEOUT: "60000"
       TOKEN: ${PLAYWRIGHT_TOKEN}
     healthcheck:
