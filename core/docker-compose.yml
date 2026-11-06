@@ -201,11 +201,14 @@ services:
           memory: 16M
 
   postgresql:
-    # Pinned to the exact point release — 17.9-alpine is the newest
-    # 17.x alpine tag on Docker Hub at time of pin. Bump intentionally
-    # when a newer 17.x appears.
-    image: postgres:17.9-alpine
+    # PG18. The 18+ image layout: VOLUME /var/lib/postgresql, cluster in <major>/docker.
+    # PGDATA is pinned on purpose — a future major bump must fail loudly on this dir,
+    # never silently initdb an empty <newmajor>/docker. Major upgrades = dump/restore
+    # into a fresh dir (upgrade of 2026-11-06: 17.9 -> 18.6; the old 17 data stays in
+    # /opt/my-server/postgresql/data for rollback until 2026-11-20).
+    image: postgres:18.6-alpine
     environment:
+      PGDATA: /var/lib/postgresql/18/docker
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -213,13 +216,14 @@ services:
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
       POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD}
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    stop_grace_period: 60s      # let a fast shutdown finish its checkpoint; the default 10s then SIGKILL
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 15s
       timeout: 5s
       retries: 5
     volumes:
-      - /opt/my-server/postgresql/data:/var/lib/postgresql/data
+      - /opt/my-server/pgdata:/var/lib/postgresql
     configs:
       - source: init-databases
         target: /docker-entrypoint-initdb.d/init-databases.sh
