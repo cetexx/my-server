@@ -238,7 +238,7 @@ services:
           memory: 1G
 
   redis:
-    image: redis:7.4.8-alpine  # latest within 7.4 at time of pin
+    image: redis:8.10.3-alpine  # Redis 8; the image auto-loads search/json/ts/bloom (~+20 MB). RDB 15 is one-way: rollback = restore redis/data
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
