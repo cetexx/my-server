@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   prometheus:
-    image: prom/prometheus:v2.55.1  # latest v2.x; v3.x is a breaking change (keep for a planned upgrade)
+    image: prom/prometheus:v3.13.5  # 3.13 = LTS (to 2027-07-31). TSDB readable by 2.55+ (rollback = image)
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -107,7 +107,10 @@ services:
       mode: global
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.52.1  # conservative bump; v0.56+ requires testing first
+    # ghcr.io since v0.56 (gcr.io stops at 0.55.1). >=0.54 reads rootfs via containerd
+    # (/var/run/containerd/containerd.sock through the /var/run mount) — needed on Docker 29's
+    # containerd image store; 0.52 produced no `name` label, so container alerts never fired.
+    image: ghcr.io/google/cadvisor:v0.60.6
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -222,7 +225,7 @@ configs:
     name: prometheus-config-v2
   alert-rules:
     file: ./prometheus/alert-rules.yml
-    name: alert-rules-v2
+    name: alert-rules-v3
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
     name: alertmanager-config-v4

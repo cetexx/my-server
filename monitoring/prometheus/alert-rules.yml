@@ -70,7 +70,7 @@ groups:
           summary: "PostgreSQL nepasiekiamas"
 
       - alert: PostgresqlTooManyConnections
-        expr: sum(pg_stat_activity_count) / pg_settings_max_connections * 100 > 80
+        expr: sum(pg_stat_activity_count) / scalar(max(pg_settings_max_connections)) * 100 > 80   # sum() drops labels; the plain division matched nothing
         for: 5m
         labels:
           severity: warning
