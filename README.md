@@ -14,7 +14,7 @@ Docker Swarm paremta infrastruktūra VPS serveriui su daugybe projektų.
 
 ```
 Traefik (reverse proxy, SSL, rate limiting)
-├── core          Traefik, PostgreSQL 17, Redis, Portainer, Adminer, Playwright, socket-proxy
+├── core          Traefik, PostgreSQL 18, Redis 8, Portainer, Adminer, Playwright, socket-proxy
 ├── monitoring    Prometheus, Alertmanager, Grafana, Node Exporter, cAdvisor, Dozzle
 └── mail          docker-mailserver v15 (Rspamd), Roundcube webmail (mail.cetex.dev)
 ```

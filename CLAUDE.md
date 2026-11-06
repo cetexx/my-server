@@ -8,7 +8,7 @@ Docker Swarm infrastructure for a VPS server hosting multiple projects. Single-n
 
 Four Docker Swarm infrastructure stacks sharing two overlay networks (`traefik-public`, `internal`):
 
-- **core** — Traefik v3 (reverse proxy, SSL), PostgreSQL 17, Redis 7, Portainer, Adminer, Playwright (browserless/chromium), docker-socket-proxy (filtered read-only Docker API for Traefik)
+- **core** — Traefik v3.7 (reverse proxy, SSL), PostgreSQL 18 (cluster in `/opt/my-server/pgdata/18/docker`, `PGDATA` pinned — a major bump is a dump/restore into a fresh dir, never a tag change), Redis 8, Portainer, Adminer, Playwright (browserless/chromium), docker-socket-proxy (filtered read-only Docker API for Traefik)
 - **monitoring** — Prometheus, Alertmanager, Grafana (4 auto-provisioned dashboards), Node Exporter, cAdvisor, postgres-exporter, Dozzle
 - **mail** — docker-mailserver **v15** (Rspamd for spam + DKIM), Roundcube webmail at `mail.cetex.dev`. TLS read directly from Traefik `acme.json` (`SSL_TYPE=letsencrypt`, no certs-dumper). One instance serves natars.mobi, xheroes.agency, cetex.dev — plus airsoftpunks.lt for DKIM signing ONLY (no mailboxes; its inbound mail is on Google Workspace).
 - **landing** — nginx static page at `cetex.dev` + Traefik redirects (www→https, bare server-IP→`https://cetex.dev`)
@@ -45,6 +45,21 @@ In Docker Swarm, services from different stacks communicate via external overlay
 - `core_playwright` — Headless browser from any stack
 
 Within the same stack, use just `<service>` — BUT only if that service name is UNIQUE across all stacks (see hazard below).
+
+### Upgrades and registry limits (learned 2026-11-06)
+
+- **Docker Hub is pulled ANONYMOUSLY** (100 requests/hour per IP). A burst of pulls plus
+  `buildx imagetools inspect` digest checks exhausted it, and `./deploy.sh core` then ran under
+  HTTP 429. `docker stack deploy` could not resolve digests, rewrote every Docker Hub service
+  spec from `tag@digest` to a bare tag, and so restarted PostgreSQL and Traefik. Redis stayed down
+  ~2 min, because its new image had never been pulled. Before any deploy: confirm the target
+  image exists locally (`docker image inspect`), and check the remaining quota with
+  `curl -sI` against the `ratelimitpreview/test` manifest, which does not count. If a check shows
+  many unexpected `MOVED` services, the registry is failing: stop. Official images are also on
+  `public.ecr.aws/docker/library/*`, which has no Docker Hub limit.
+- PostgreSQL 17.9 → 18.6 was a dump/restore. The 17 data stays in `/opt/my-server/postgresql/data`
+  for rollback; delete it by hand after 2026-11-20. Backups and the runbook are in
+  `backups/upgrade-2026-11/`, and `backup.sh clean` removes them 7 days after creation.
 
 ### ⚠ Collision hazard (learned the hard way — natars, 2026-07-21)
 The short `<service>` alias is registered on the SHARED external `internal` network and is **NOT stack-isolated**. If two stacks each have a service named `redis` (e.g. `core_redis` + `natars_redis`), then `redis` resolves to **both** VIPs and round-robins — so ~half the connections hit the wrong server. natars used `REDIS_HOST=redis` → intermittent `WRONGPASS` against `core_redis` (different password). Hard rule:
