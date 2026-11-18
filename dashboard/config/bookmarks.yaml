@@ -2,11 +2,19 @@
     - Cloudflare:
         - icon: si-cloudflare
           href: https://dash.cloudflare.com/
-          description: DNS, SSL
+          description: DNS ir SSL
     - Zero Trust:
         - icon: si-cloudflare
           href: https://one.dash.cloudflare.com/
           description: Access — kas gali prisijungti
+    - Sentry:
+        - icon: si-sentry
+          href: https://sentry.io/
+          description: Pickzy klaidos
+    - Google Admin:
+        - icon: si-google
+          href: https://admin.google.com/
+          description: pickzy.app paštas, SMTP relay
     - my-server:
         - icon: si-github
           href: https://github.com/cetexx/my-server
@@ -15,11 +23,17 @@
         - icon: si-github
           href: https://github.com/pickzy-app
           description: Pickzy repozitorijos
-    - Sentry:
-        - icon: si-sentry
-          href: https://sentry.io/
-          description: klaidos
-    - Google Admin:
-        - icon: si-google
-          href: https://admin.google.com/
-          description: pickzy.app paštas, SMTP relay
+
+- Dokumentacija:
+    - my-server CLAUDE.md:
+        - icon: mdi-file-document
+          href: https://github.com/cetexx/my-server/blob/main/CLAUDE.md
+          description: kaip serveris sudėtas ir kodėl
+    - Homepage:
+        - icon: mdi-view-dashboard
+          href: https://gethomepage.dev/
+          description: šio dashboard'o dokumentacija
+    - Cloudflare Access:
+        - icon: si-cloudflare
+          href: https://developers.cloudflare.com/cloudflare-one/applications/
+          description: Access aplikacijos ir politikos

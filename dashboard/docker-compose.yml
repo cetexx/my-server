@@ -27,6 +27,10 @@ services:
         target: /app/config/bookmarks.yaml
       - source: homepage-docker
         target: /app/config/docker.yaml
+      - source: homepage-custom-css
+        target: /app/config/custom.css
+      - source: homepage-custom-js
+        target: /app/config/custom.js
     networks:
       - traefik-public
       - internal
@@ -52,19 +56,26 @@ services:
 configs:
   homepage-settings:
     file: ./config/settings.yaml
-    name: homepage-settings-v1
+    name: homepage-settings-v2
   homepage-services:
     file: ./config/services.yaml
-    name: homepage-services-v1
+    name: homepage-services-v2
   homepage-widgets:
     file: ./config/widgets.yaml
     name: homepage-widgets-v1
   homepage-bookmarks:
     file: ./config/bookmarks.yaml
-    name: homepage-bookmarks-v1
+    name: homepage-bookmarks-v2
   homepage-docker:
     file: ./config/docker.yaml
     name: homepage-docker-v1
+  # Meniu „Projektai ▾“ ir fonas (Homepage oficialus custom.css / custom.js).
+  homepage-custom-css:
+    file: ./config/custom.css
+    name: homepage-custom-css-v1
+  homepage-custom-js:
+    file: ./config/custom.js
+    name: homepage-custom-js-v1
 
 networks:
   traefik-public:

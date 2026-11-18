@@ -1,0 +1,56 @@
+/* cetex.dev — Homepage papildymai: fonas ir meniu „Projektai ▾“ (custom.js). */
+
+/* Subtilus fonas po kortelėmis (cardBlur jį šiek tiek praleidžia). */
+#page_wrapper {
+  background-image:
+    radial-gradient(1100px 520px at 8% -8%, rgb(45 212 191 / 0.1), transparent 60%),
+    radial-gradient(900px 480px at 105% 0%, rgb(129 140 248 / 0.12), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Projektų tab'ai juostoje paslėpti — juos atidaro meniu „Projektai ▾“. */
+#myTab > li.cetex-project-tab {
+  display: none;
+}
+
+#myTab > li.cetex-projects {
+  position: relative;
+}
+
+.cetex-projects-panel {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 14rem;
+  padding: 0.4rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(148 163 184 / 0.22);
+  background: rgb(15 23 42 / 0.97);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+}
+
+.cetex-projects-panel[hidden] {
+  display: none;
+}
+
+.cetex-projects-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: rgb(226 232 240);
+}
+
+.cetex-projects-item:hover,
+.cetex-projects-item:focus-visible {
+  background: rgb(255 255 255 / 0.08);
+  outline: none;
+}
+
+.cetex-projects-item.cetex-active {
+  background: rgb(255 255 255 / 0.12);
+}

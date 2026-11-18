@@ -3,20 +3,78 @@ description: Serverio būsena, įrankiai ir projektai
 theme: dark
 color: slate
 headerStyle: boxedWidgets
+cardStyle: hairline
+blockStyle: refined
+cardBlur: sm
+iconStyle: theme
+useEqualHeights: true
 statusStyle: dot
 hideVersion: true
 disableIndexing: true
 
+# Pradėk rašyti bet kur puslapyje — atsidaro paieška per įrankius, projektus ir nuorodas.
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  hideVisitURL: true
+  showSearchSuggestions: false
+
+# Tab'ai = puslapiai; eilės tvarka čia = tab'ų tvarka. Tiesioginė nuoroda: home.cetex.dev/#pickzy.
+# Serveris / Įrankiai / Nuorodos — pagrindiniai tab'ai. VISI kiti tab'ai yra projektai: custom.js
+# juos paslepia iš juostos ir sudeda į meniu „Projektai ▾“ (custom.js → MAIN_TABS).
 layout:
   Serveris:
+    tab: Serveris
+    icon: mdi-server
+    style: row
+    columns: 3
+  Būsena:
+    tab: Serveris
+    icon: mdi-heart-pulse
     style: row
     columns: 3
   Įrankiai:
+    tab: Įrankiai
+    icon: mdi-tools
     style: row
     columns: 3
-  Projektai:
+  Pickzy:
+    tab: Pickzy
+    icon: mdi-silverware-fork-knife
+    style: row
+    columns: 3
+  airsoftpunks.lt:
+    tab: airsoftpunks.lt
+    icon: mdi-web
+    style: row
+    columns: 3
+  baltela.lt:
+    tab: baltela.lt
+    icon: mdi-web
+    style: row
+    columns: 3
+  xheroes.agency:
+    tab: xheroes.agency
+    icon: mdi-web
+    style: row
+    columns: 3
+  lvl.mobi:
+    tab: lvl.mobi
+    icon: mdi-web
+    style: row
+    columns: 3
+  zombiufabrikas.lt:
+    tab: zombiufabrikas.lt
+    icon: mdi-web
     style: row
     columns: 3
   Valdymas:
+    tab: Nuorodos
+    icon: mdi-cog
     style: row
-    columns: 6
+    columns: 3
+  Dokumentacija:
+    tab: Nuorodos
+    icon: mdi-book-open-variant
+    style: row
+    columns: 3

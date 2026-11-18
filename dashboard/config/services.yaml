@@ -1,5 +1,8 @@
+# Tab'ai ir grupių tvarka — settings.yaml → layout.
 # Metrikos — Prometheus `internal` tinkle (node-exporter, cAdvisor, Traefik, postgres-exporter).
 # Būsenos taškai — Swarm servisai per core_socket-proxy (docker.yaml: `cetex`).
+# Kiekvienas projektas = viena grupė = vienas tab'as; custom.js juos sudeda į meniu „Projektai ▾“
+# (visi tab'ai, išskyrus Serveris / Įrankiai / Nuorodos). Naujas projektas: grupė čia + layout įrašas.
 
 - Serveris:
     - cetex.dev:
@@ -14,23 +17,23 @@
               query: '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])))'
               format:
                 type: number
-                suffix: ' %'
                 options:
                   maximumFractionDigits: 0
+                suffix: ' %'
             - label: RAM
               query: '100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)'
               format:
                 type: number
-                suffix: ' %'
                 options:
                   maximumFractionDigits: 0
+                suffix: ' %'
             - label: Diskas
               query: '100 * (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})'
               format:
                 type: number
-                suffix: ' %'
                 options:
                   maximumFractionDigits: 0
+                suffix: ' %'
             - label: Veikia
               query: 'time() - node_boot_time_seconds'
               format:
@@ -38,7 +41,7 @@
 
     - Apkrova:
         icon: mdi-chart-line
-        description: Traefik srautas ir Swarm konteineriai
+        description: Traefik srautas visiems projektams
         widget:
           type: prometheusmetric
           url: http://monitoring_prometheus:9090
@@ -54,42 +57,157 @@
               query: 'sum(rate(traefik_entrypoint_requests_total{entrypoint="websecure"}[5m]))'
               format:
                 type: number
-                suffix: ' /s'
                 options:
                   maximumFractionDigits: 1
+                suffix: ' /s'
             - label: 5xx
               query: 'sum(rate(traefik_entrypoint_requests_total{entrypoint="websecure",code=~"5.."}[5m])) or vector(0)'
               format:
                 type: number
-                suffix: ' /s'
                 options:
                   maximumFractionDigits: 2
-            - label: Konteineriai
-              query: 'count(time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60)'
+                suffix: ' /s'
+            - label: Užklausų per 24 h
+              query: 'sum(increase(traefik_entrypoint_requests_total{entrypoint="websecure"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
 
-    - Sauga ir duomenys:
-        icon: mdi-shield-check
-        description: Įspėjimai, sertifikatai, PostgreSQL
+    - Docker Swarm:
+        icon: mdi-docker
+        description: Visi stack'ai
         widget:
           type: prometheusmetric
           url: http://monitoring_prometheus:9090
-          refreshInterval: 60000
+          refreshInterval: 30000
           metrics:
-            - label: Įspėjimai
+            - label: Konteineriai
+              query: 'count(time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Servisai
+              query: 'count(count by (container_label_com_docker_swarm_service_name) (time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name!=""})'
+              format:
+                type: bytes
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name!=""}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+- Būsena:
+    - Įspėjimai ir stebėjimas:
+        icon: mdi-bell-alert
+        href: https://alerts.cetex.dev/
+        description: Alertmanager → sarunas@pickzy.app
+        server: cetex
+        container: monitoring_alertmanager
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Aktyvūs
               query: 'count(ALERTS{alertstate="firing"}) or vector(0)'
-            - label: Sertifikatas baigsis po
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Laukia
+              query: 'count(ALERTS{alertstate="pending"}) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Taikiniai veikia
+              query: 'sum(up)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Neveikia
+              query: 'count(up == 0) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Sertifikatai:
+        icon: mdi-certificate
+        href: https://traefik.cetex.dev/
+        description: Let's Encrypt per Traefik
+        server: cetex
+        container: core_traefik
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Iš viso
+              query: 'count(traefik_tls_certs_not_after)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Artimiausias baigsis po
               query: 'min(traefik_tls_certs_not_after - time()) / 86400'
               format:
                 type: number
-                suffix: ' d.'
                 options:
                   maximumFractionDigits: 0
-            - label: DB dydis
+                suffix: ' d.'
+            - label: Baigiasi < 30 d.
+              query: 'count((traefik_tls_certs_not_after - time()) < 30 * 86400) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - PostgreSQL:
+        icon: mdi-elephant
+        href: https://adminer.cetex.dev/
+        description: core_postgresql — visos DB
+        server: cetex
+        container: core_postgresql
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Dydis
               query: 'sum(pg_database_size_bytes)'
               format:
                 type: bytes
-            - label: DB jungtys
+            - label: Jungtys
               query: 'sum(pg_stat_activity_count)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Transakcijos
+              query: 'sum(rate(pg_stat_database_xact_commit[5m]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' /s'
+            - label: Cache hit
+              query: '100 * sum(pg_stat_database_blks_hit) / (sum(pg_stat_database_blks_hit) + sum(pg_stat_database_blks_read))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 2
+                suffix: ' %'
 
 - Įrankiai:
     - Grafana:
@@ -105,25 +223,13 @@
         description: Metrikos ir taisyklės
         server: cetex
         container: monitoring_prometheus
-        widget:
-          type: prometheus
-          url: http://monitoring_prometheus:9090
 
     - Alertmanager:
         icon: mdi-bell-alert
         href: https://alerts.cetex.dev/
-        description: Įspėjimai į sarunas@pickzy.app
+        description: Įspėjimai ir tylėjimai
         server: cetex
         container: monitoring_alertmanager
-        widget:
-          type: prometheusmetric
-          url: http://monitoring_prometheus:9090
-          refreshInterval: 30000
-          metrics:
-            - label: Aktyvūs
-              query: 'count(ALERTS{alertstate="firing"}) or vector(0)'
-            - label: Laukia
-              query: 'count(ALERTS{alertstate="pending"}) or vector(0)'
 
     - Logai:
         icon: mdi-text-box-search
@@ -149,23 +255,9 @@
     - Traefik:
         icon: traefik.svg
         href: https://traefik.cetex.dev/
-        description: Maršrutai ir sertifikatai
+        description: Maršrutai, middleware'ai, sertifikatai
         server: cetex
         container: core_traefik
-        widget:
-          type: prometheusmetric
-          url: http://monitoring_prometheus:9090
-          refreshInterval: 30000
-          metrics:
-            - label: Sertifikatai
-              query: 'count(traefik_tls_certs_not_after)'
-            - label: Užklausos
-              query: 'sum(rate(traefik_entrypoint_requests_total[5m]))'
-              format:
-                type: number
-                suffix: ' /s'
-                options:
-                  maximumFractionDigits: 1
 
     - Playwright:
         icon: mdi-google-chrome
@@ -181,76 +273,699 @@
         server: cetex
         container: mail_mailserver
 
-- Projektai:
-    - Pickzy:
-        icon: mdi-silverware-fork-knife
-        href: https://pickzy.app/
-        description: API · partneriai · landing · eilių Redis
+- Pickzy:
+    - API:
+        icon: mdi-api
+        href: https://api.pickzy.app/api/health
+        description: api.pickzy.app — Laravel, Horizon eilės
         server: cetex
         container: pickzy_api
         siteMonitor: https://api.pickzy.app/api/health
-        widgets:
-          - type: customapi
-            url: https://api.pickzy.app/api/health
-            refreshInterval: 60000
-            mappings:
-              - field: version
-                label: Versija
-              - field: checks.db.status
-                label: DB
-              - field: checks.redis.status
-                label: Redis
-              - field: checks.horizon.status
-                label: Eilės
-          - type: customapi
-            url: https://api.pickzy.app/api/health
-            refreshInterval: 60000
-            mappings:
-              - field: checks.wolt_last_sync.age_seconds
-                label: Wolt sync prieš
-                format: duration
-              - field: checks.bolt_last_sync.age_seconds
-                label: Bolt sync prieš
-                format: duration
-              - field: checks.wolt_freshness.status
-                label: Wolt meniu
-              - field: checks.bolt_freshness.status
-                label: Bolt meniu
+        widget:
+          type: customapi
+          url: https://api.pickzy.app/api/health
+          refreshInterval: 60000
+          mappings:
+            - field: version
+              label: Versija
+            - field: checks.db.status
+              label: DB
+            - field: checks.redis.status
+              label: Redis
+            - field: checks.horizon.status
+              label: Eilės
 
-    - airsoftpunks.lt:
+    - Sinchronizacija:
+        icon: mdi-sync
+        description: Wolt ir Bolt meniu
+        widget:
+          type: customapi
+          url: https://api.pickzy.app/api/health
+          refreshInterval: 60000
+          mappings:
+            - field: checks.wolt_last_sync.age_seconds
+              label: Wolt sync prieš
+              format: duration
+            - field: checks.bolt_last_sync.age_seconds
+              label: Bolt sync prieš
+              format: duration
+            - field: checks.wolt_freshness.status
+              label: Wolt meniu
+            - field: checks.bolt_freshness.status
+              label: Bolt meniu
+
+    - Srautas:
+        icon: mdi-chart-line
+        description: Traefik — api, partneriai, landing
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service=~"pickzy-.*"}[5m]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: API atsakas
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="pickzy-api@swarm"}[5m])) / sum(rate(traefik_service_request_duration_seconds_count{service="pickzy-api@swarm"}[5m]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: Užklausų per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service=~"pickzy-.*"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service=~"pickzy-.*",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: api, landing, partners, redis, egress — „Veikia“ = API
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"pickzy_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"pickzy_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="pickzy_api"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"pickzy_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"pickzy_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Duomenys:
+        icon: mdi-database
+        description: PostgreSQL ir eilių Redis
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 60000
+          metrics:
+            - label: DB pickzy
+              query: 'pg_database_size_bytes{datname="pickzy"}'
+              format:
+                type: bytes
+            - label: DB jungtys
+              query: 'sum(pg_stat_activity_count{datname="pickzy"}) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Admin DB
+              query: 'pg_database_size_bytes{datname="pickzy_admin"}'
+              format:
+                type: bytes
+            - label: Eilių Redis
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name="pickzy_redis"})'
+              format:
+                type: bytes
+
+    - pickzy.app:
+        icon: mdi-web
+        href: https://pickzy.app/
+        description: landing
+        server: cetex
+        container: pickzy_landing
+        siteMonitor: https://pickzy.app/
+
+    - partners.pickzy.app:
+        icon: mdi-store
+        href: https://partners.pickzy.app/
+        description: savininkų panelė
+        server: cetex
+        container: pickzy_partners
+        siteMonitor: https://partners.pickzy.app/
+
+- airsoftpunks.lt:
+    - Svetainė:
         icon: mdi-web
         href: https://airsoftpunks.lt/
+        description: airsoftpunks.lt
         server: cetex
         container: airsoftpunks_airsoftpunks-web
         siteMonitor: https://airsoftpunks.lt/
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service="airsoftpunks-web@swarm"}[5m])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: Atsakas (1 h)
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="airsoftpunks-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="airsoftpunks-web@swarm"}[1h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service="airsoftpunks-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Sertifikatas
+              query: 'min(traefik_tls_certs_not_after{cn="airsoftpunks.lt"} - time()) / 86400'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' d.'
 
-    - baltela.lt:
+    - Per 24 h:
+        icon: mdi-calendar-today
+        description: Traefik srautas per parą
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Užklausų
+              query: 'sum(increase(traefik_service_requests_total{service="airsoftpunks-web@swarm"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Išsiųsta
+              query: 'sum(increase(traefik_service_responses_bytes_total{service="airsoftpunks-web@swarm"}[24h]))'
+              format:
+                type: bytes
+            - label: 4xx
+              query: 'sum(increase(traefik_service_requests_total{service="airsoftpunks-web@swarm",code=~"4.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx
+              query: 'sum(increase(traefik_service_requests_total{service="airsoftpunks-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: airsoftpunks_* servisai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"airsoftpunks_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"airsoftpunks_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="airsoftpunks_airsoftpunks-web"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"airsoftpunks_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"airsoftpunks_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+- baltela.lt:
+    - Svetainė:
         icon: mdi-web
         href: https://baltela.lt/
+        description: baltela.lt
         server: cetex
         container: baltela_baltela-web
         siteMonitor: https://baltela.lt/
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service="baltela-web@swarm"}[5m])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: Atsakas (1 h)
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="baltela-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="baltela-web@swarm"}[1h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service="baltela-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Sertifikatas
+              query: 'min(traefik_tls_certs_not_after{cn="baltela.lt"} - time()) / 86400'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' d.'
 
-    - xheroes.agency:
+    - Per 24 h:
+        icon: mdi-calendar-today
+        description: Traefik srautas per parą
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Užklausų
+              query: 'sum(increase(traefik_service_requests_total{service="baltela-web@swarm"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Išsiųsta
+              query: 'sum(increase(traefik_service_responses_bytes_total{service="baltela-web@swarm"}[24h]))'
+              format:
+                type: bytes
+            - label: 4xx
+              query: 'sum(increase(traefik_service_requests_total{service="baltela-web@swarm",code=~"4.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx
+              query: 'sum(increase(traefik_service_requests_total{service="baltela-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: baltela_* servisai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"baltela_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"baltela_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="baltela_baltela-web"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"baltela_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"baltela_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+- xheroes.agency:
+    - Svetainė:
         icon: mdi-web
         href: https://xheroes.agency/
-        description: app + discord-gateway
+        description: xheroes.agency
         server: cetex
         container: heroes_app
         siteMonitor: https://xheroes.agency/
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service="heroes@swarm"}[5m])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: Atsakas (1 h)
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="heroes@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="heroes@swarm"}[1h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service="heroes@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Sertifikatas
+              query: 'min(traefik_tls_certs_not_after{cn="xheroes.agency"} - time()) / 86400'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' d.'
 
-    - lvl.mobi:
+    - Per 24 h:
+        icon: mdi-calendar-today
+        description: Traefik srautas per parą
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Užklausų
+              query: 'sum(increase(traefik_service_requests_total{service="heroes@swarm"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Išsiųsta
+              query: 'sum(increase(traefik_service_responses_bytes_total{service="heroes@swarm"}[24h]))'
+              format:
+                type: bytes
+            - label: 4xx
+              query: 'sum(increase(traefik_service_requests_total{service="heroes@swarm",code=~"4.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx
+              query: 'sum(increase(traefik_service_requests_total{service="heroes@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: heroes_* servisai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"heroes_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"heroes_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="heroes_app"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"heroes_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"heroes_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Duomenys:
+        icon: mdi-database
+        description: PostgreSQL (core_postgresql)
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 60000
+          metrics:
+            - label: DB heroes
+              query: 'pg_database_size_bytes{datname="heroes"}'
+              format:
+                type: bytes
+            - label: DB jungtys
+              query: 'sum(pg_stat_activity_count{datname=~"heroes"}) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+- lvl.mobi:
+    - Svetainė:
         icon: mdi-web
         href: https://lvl.mobi/
-        description: web + server
+        description: lvl.mobi
         server: cetex
-        container: lvl_lvl-web
+        container: lvl_lvl-server
         siteMonitor: https://lvl.mobi/
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service=~"lvl-web@swarm|lvl-api@swarm"}[5m])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: Atsakas (1 h)
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="lvl-api@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="lvl-api@swarm"}[1h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service=~"lvl-web@swarm|lvl-api@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Sertifikatas
+              query: 'min(traefik_tls_certs_not_after{cn="lvl.mobi"} - time()) / 86400'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' d.'
 
-    - zombiufabrikas.lt:
+    - Per 24 h:
+        icon: mdi-calendar-today
+        description: Traefik srautas per parą
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Užklausų
+              query: 'sum(increase(traefik_service_requests_total{service=~"lvl-web@swarm|lvl-api@swarm"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Išsiųsta
+              query: 'sum(increase(traefik_service_responses_bytes_total{service=~"lvl-web@swarm|lvl-api@swarm"}[24h]))'
+              format:
+                type: bytes
+            - label: 4xx
+              query: 'sum(increase(traefik_service_requests_total{service=~"lvl-web@swarm|lvl-api@swarm",code=~"4.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx
+              query: 'sum(increase(traefik_service_requests_total{service=~"lvl-web@swarm|lvl-api@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: lvl_* servisai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"lvl_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"lvl_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="lvl_lvl-server"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"lvl_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"lvl_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Duomenys:
+        icon: mdi-database
+        description: PostgreSQL (core_postgresql)
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 60000
+          metrics:
+            - label: DB lvl
+              query: 'pg_database_size_bytes{datname="lvl"}'
+              format:
+                type: bytes
+            - label: DB jungtys
+              query: 'sum(pg_stat_activity_count{datname=~"lvl"}) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+- zombiufabrikas.lt:
+    - Svetainė:
         icon: mdi-web
         href: https://zombiufabrikas.lt/
         description: DNS rodo į 79.98.25.1, ne į šį serverį — sertifikatas neatsinaujina
         server: cetex
         container: zombiufabrikas_zombiufabrikas-web
         siteMonitor: https://zombiufabrikas.lt/
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Užklausos
+              query: 'sum(rate(traefik_service_requests_total{service="zombiufabrikas-web@swarm"}[5m])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' /s'
+            - label: Atsakas (1 h)
+              query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="zombiufabrikas-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="zombiufabrikas-web@swarm"}[1h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' ms'
+            - label: 5xx per 24 h
+              query: 'sum(increase(traefik_service_requests_total{service="zombiufabrikas-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Sertifikatas
+              query: 'min(traefik_tls_certs_not_after{cn="zombiufabrikas.lt"} - time()) / 86400'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+                suffix: ' d.'
+
+    - Per 24 h:
+        icon: mdi-calendar-today
+        description: Traefik srautas per parą
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 300000
+          metrics:
+            - label: Užklausų
+              query: 'sum(increase(traefik_service_requests_total{service="zombiufabrikas-web@swarm"}[24h]))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: Išsiųsta
+              query: 'sum(increase(traefik_service_responses_bytes_total{service="zombiufabrikas-web@swarm"}[24h]))'
+              format:
+                type: bytes
+            - label: 4xx
+              query: 'sum(increase(traefik_service_requests_total{service="zombiufabrikas-web@swarm",code=~"4.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+            - label: 5xx
+              query: 'sum(increase(traefik_service_requests_total{service="zombiufabrikas-web@swarm",code=~"5.."}[24h])) or vector(0)'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
+
+    - Konteineriai:
+        icon: mdi-docker
+        description: zombiufabrikas_* servisai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU (serverio)
+              query: '100 * sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~"zombiufabrikas_.*"}[5m])) / count(node_cpu_seconds_total{mode="idle"})'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 1
+                suffix: ' %'
+            - label: RAM
+              query: 'sum(container_memory_working_set_bytes{container_label_com_docker_swarm_service_name=~"zombiufabrikas_.*"})'
+              format:
+                type: bytes
+            - label: Veikia
+              query: 'time() - max(container_start_time_seconds{container_label_com_docker_swarm_service_name="zombiufabrikas_zombiufabrikas-web"})'
+              format:
+                type: duration
+            - label: Perkrauta per 24 h
+              query: 'count(count by (name) (count_over_time(container_last_seen{container_label_com_docker_swarm_service_name=~"zombiufabrikas_.*"}[24h]))) - count(count by (container_label_com_docker_swarm_service_name) (container_last_seen{container_label_com_docker_swarm_service_name=~"zombiufabrikas_.*"}))'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 0
