@@ -158,19 +158,36 @@ Every server tool (`traefik.`, `portainer.`, `adminer.`, `playwright.`, `prometh
 
 ### Dashboard: `home.cetex.dev` (`dashboard/` stack)
 
-[Homepage](https://gethomepage.dev) v2.8.0 shows:
-- server load, disk and uptime (node-exporter);
-- Traefik traffic and 5xx;
-- the soonest certificate expiry;
-- PostgreSQL size;
-- firing alerts;
-- every tool and project with its Swarm service status (through `core_socket-proxy`, read only);
-- each project's site monitor;
-- Pickzy's `/api/health`.
+[Homepage](https://gethomepage.dev) v2.8.0. **Each tab is a page.**
+- **Serveris** is the main page and is about the server only:
+  - load, disk and uptime (node-exporter);
+  - Traefik traffic;
+  - Docker Swarm totals;
+  - alerts and Prometheus targets;
+  - certificates (soonest expiry, how many expire within 30 d);
+  - PostgreSQL (size, connections, TPS, cache hit).
+- **Įrankiai** lists the tools with their Swarm status.
+- **Projektai ▾** is a dropdown with one page per project. Each page shows:
+  - Traefik traffic, latency, and 24 h requests / bytes / 4xx / 5xx;
+  - its containers' CPU share, RAM, uptime and replacements in 24 h (cAdvisor);
+  - its database and its certificate;
+  - for Pickzy also its `/api/health`, Wolt/Bolt sync, and the queue Redis.
+- **Nuorodos** holds the bookmarks.
 
-It needs no docker.sock and no host mounts. Config files are swarm configs: after editing one, bump its `name:` version, then `./deploy.sh dashboard`. Homepage's own auth (v2) stays off, because Access is the gate.
+It needs no docker.sock and no host mounts. Docker status comes through `core_socket-proxy` (read only) and metrics through Prometheus.
 
-**Found while building it:** `zombiufabrikas.lt` resolves to 79.98.25.1, not this server, so its Let's Encrypt renewal fails (403 unauthorized) and its certificate expires around 2026-12-13. Either point the DNS back here or remove the stack.
+- **A new project:** add a group to `config/services.yaml` and a `layout` entry with `tab: <name>` in `config/settings.yaml`.
+  - `custom.js` folds every tab except `MAIN_TABS` (Serveris / Įrankiai / Nuorodos) into the dropdown, so it needs no change.
+  - The dropdown works by clicking Homepage's own hidden tab buttons. If a Homepage upgrade changes `#myTab > li > button[role=tab]`, the menu disappears and projects show as plain tabs. Check after every upgrade.
+- **Config files are swarm configs.** After editing one, bump its `name:` version, then `./deploy.sh dashboard`.
+  - Each deploy replaces the container. Four replacements within 15 min trip `ContainerRestarting` for `dashboard_homepage`, which happened on 2026-11-18. When iterating, add a short `amtool silence` first.
+- **Caching:**
+  - A Cloudflare Cache Rule bypasses the edge cache for the whole cetex.dev zone (only the tools are proxied). Cloudflare had cached the first, empty `custom.js` for 4 h.
+  - Homepage itself sends `custom.css` / `custom.js` with `max-age=14400`, so a Traefik router for `/api/config/custom*` answers them with `Cache-Control: no-cache`.
+- Homepage's own auth (v2) stays off; Access is the gate.
+- **The old `cetex.dev` landing HTML** had no `Cache-Control`. A browser that visited it before may keep showing it for a while; a hard refresh fixes that.
+
+**Found while building it:** `zombiufabrikas.lt` resolves to 79.98.25.1, not this server. Its Let's Encrypt renewal fails (403 unauthorized), and its certificate expires around 2026-12-13. Either point the DNS back here or remove the stack.
 
 ## PostgreSQL tuning
 
