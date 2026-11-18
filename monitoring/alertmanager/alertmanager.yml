@@ -1,10 +1,14 @@
 global:
-  # Siunčiam per vidinį mail serverį (PERMIT_DOCKER=network leidžia be auth)
-  smtp_smarthost: 'mail_mailserver:25'
-  # Domenas, kurį tvarko šio serverio mailserver (DKIM/SPF/DMARC sutvarkyti) — kad
-  # Gmail nepriimtų kaip spoof (example.com SPF -all → hard-fail, alertai tyliai krisdavo).
-  smtp_from: 'alertmanager@cetex.dev'       # SPF ip4:176.223.132.42 + Rspamd DKIM; pickzy.app is Google-only
-  smtp_require_tls: false
+  # Per Google Workspace SMTP relay (2026-11-18). pickzy.app Workspace'as priima šį serverį pagal IP
+  # (Admin → Gmail → Routing → SMTP relay service „my-server alerts (176.223.132.42)": tik šis IP,
+  # tik siuntėjai @pickzy.app, privalomas TLS) ir laišką pristato Google viduje. Iki tol alertai ėjo
+  # per vietinį mail_mailserver iš alertmanager@cetex.dev, ir Gmail juos atmetinėjo nuo 2026-11-09
+  # (550-5.7.1 „very low reputation of the sending domain" — cAdvisor OOM ciklo alertų lavina,
+  # 2,992 atmetimai): nė vienas alertas neatėjo. EHLO — serverio PTR vardas, ne „localhost".
+  smtp_smarthost: 'smtp-relay.gmail.com:587'
+  smtp_from: 'alerts@pickzy.app'
+  smtp_hello: 'cetex.dev'
+  smtp_require_tls: true
 
 route:
   group_by: ['alertname', 'severity']

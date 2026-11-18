@@ -237,7 +237,7 @@ configs:
     name: alert-rules-v5
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
-    name: alertmanager-config-v6
+    name: alertmanager-config-v7
   grafana-datasource:
     file: ./grafana/provisioning/datasources/datasource.yml
     name: grafana-datasource-v2

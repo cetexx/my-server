@@ -261,7 +261,7 @@ Alertai:
 | PostgresqlDeadlocks | Aptiktas deadlock |
 | TraefikHighErrorRate | >5% 5xx klaidų |
 
-Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
+Alertai automatiškai siunčiami email'u per Alertmanager → Google Workspace SMTP relay (`smtp-relay.gmail.com`, pagal serverio IP) → sarunas@pickzy.app. Ne per vietinį mailserverį: Gmail atmeta cetex.dev laiškus (žema domeno reputacija, 2026-11-09).
 
 ## Memory alokacija
 
