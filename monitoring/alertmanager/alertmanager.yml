@@ -23,9 +23,12 @@ route:
 receivers:
   - name: 'email'
     email_configs:
-      # sarunas@pickzy.app is the owner's address for every alert (2026-11-18). pickzy.app
-      # mail is Google Workspace, so it arrives even while this server's mailserver is down.
-      - to: 'sarunas@pickzy.app, sarunas.pm@gmail.com, cetex.pm@gmail.com'
+      # sarunas@pickzy.app — the owner's one address for every alert (2026-11-18). Gmail has
+      # rejected mail from cetex.dev since 2026-11-09 (550-5.7.1, "very low reputation of the
+      # sending domain": the cAdvisor OOM loop's alert storm, 2,992 bounces), so the gmail.com
+      # recipients got nothing and each refusal kept the reputation down; they are gone. For
+      # pickzy.app the Workspace email allowlist carries 176.223.132.42.
+      - to: 'sarunas@pickzy.app'
         send_resolved: true
         headers:
           Subject: '{{ if eq .Status "firing" }}[ALERT] {{ .CommonLabels.alertname }}{{ else }}[OK] {{ .CommonLabels.alertname }}{{ end }}'
