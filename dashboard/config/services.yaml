@@ -1,0 +1,256 @@
+# Metrikos — Prometheus `internal` tinkle (node-exporter, cAdvisor, Traefik, postgres-exporter).
+# Būsenos taškai — Swarm servisai per core_socket-proxy (docker.yaml: `cetex`).
+
+- Serveris:
+    - cetex.dev:
+        icon: mdi-server
+        description: 176.223.132.42 · scraper'io išeinantys 212.24.104.223, 80.209.225.230
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 15000
+          metrics:
+            - label: CPU
+              query: '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])))'
+              format:
+                type: number
+                suffix: ' %'
+                options:
+                  maximumFractionDigits: 0
+            - label: RAM
+              query: '100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)'
+              format:
+                type: number
+                suffix: ' %'
+                options:
+                  maximumFractionDigits: 0
+            - label: Diskas
+              query: '100 * (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})'
+              format:
+                type: number
+                suffix: ' %'
+                options:
+                  maximumFractionDigits: 0
+            - label: Veikia
+              query: 'time() - node_boot_time_seconds'
+              format:
+                type: duration
+
+    - Apkrova:
+        icon: mdi-chart-line
+        description: Traefik srautas ir Swarm konteineriai
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 15000
+          metrics:
+            - label: Load 1 min
+              query: 'node_load1'
+              format:
+                type: number
+                options:
+                  maximumFractionDigits: 2
+            - label: Užklausos
+              query: 'sum(rate(traefik_entrypoint_requests_total{entrypoint="websecure"}[5m]))'
+              format:
+                type: number
+                suffix: ' /s'
+                options:
+                  maximumFractionDigits: 1
+            - label: 5xx
+              query: 'sum(rate(traefik_entrypoint_requests_total{entrypoint="websecure",code=~"5.."}[5m])) or vector(0)'
+              format:
+                type: number
+                suffix: ' /s'
+                options:
+                  maximumFractionDigits: 2
+            - label: Konteineriai
+              query: 'count(time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60)'
+
+    - Sauga ir duomenys:
+        icon: mdi-shield-check
+        description: Įspėjimai, sertifikatai, PostgreSQL
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 60000
+          metrics:
+            - label: Įspėjimai
+              query: 'count(ALERTS{alertstate="firing"}) or vector(0)'
+            - label: Sertifikatas baigsis po
+              query: 'min(traefik_tls_certs_not_after - time()) / 86400'
+              format:
+                type: number
+                suffix: ' d.'
+                options:
+                  maximumFractionDigits: 0
+            - label: DB dydis
+              query: 'sum(pg_database_size_bytes)'
+              format:
+                type: bytes
+            - label: DB jungtys
+              query: 'sum(pg_stat_activity_count)'
+
+- Įrankiai:
+    - Grafana:
+        icon: grafana.svg
+        href: https://grafana.cetex.dev/
+        description: Grafikai ir dashboard'ai
+        server: cetex
+        container: monitoring_grafana
+
+    - Prometheus:
+        icon: prometheus.svg
+        href: https://prometheus.cetex.dev/
+        description: Metrikos ir taisyklės
+        server: cetex
+        container: monitoring_prometheus
+        widget:
+          type: prometheus
+          url: http://monitoring_prometheus:9090
+
+    - Alertmanager:
+        icon: mdi-bell-alert
+        href: https://alerts.cetex.dev/
+        description: Įspėjimai į sarunas@pickzy.app
+        server: cetex
+        container: monitoring_alertmanager
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Aktyvūs
+              query: 'count(ALERTS{alertstate="firing"}) or vector(0)'
+            - label: Laukia
+              query: 'count(ALERTS{alertstate="pending"}) or vector(0)'
+
+    - Logai:
+        icon: mdi-text-box-search
+        href: https://logs.cetex.dev/
+        description: Visų konteinerių logai (Dozzle)
+        server: cetex
+        container: monitoring_dozzle
+
+    - Portainer:
+        icon: portainer.svg
+        href: https://portainer.cetex.dev/
+        description: Swarm servisai ir konteineriai
+        server: cetex
+        container: core_portainer
+
+    - Adminer:
+        icon: mdi-database
+        href: https://adminer.cetex.dev/
+        description: PostgreSQL 18 (core_postgresql)
+        server: cetex
+        container: core_adminer
+
+    - Traefik:
+        icon: traefik.svg
+        href: https://traefik.cetex.dev/
+        description: Maršrutai ir sertifikatai
+        server: cetex
+        container: core_traefik
+        widget:
+          type: prometheusmetric
+          url: http://monitoring_prometheus:9090
+          refreshInterval: 30000
+          metrics:
+            - label: Sertifikatai
+              query: 'count(traefik_tls_certs_not_after)'
+            - label: Užklausos
+              query: 'sum(rate(traefik_entrypoint_requests_total[5m]))'
+              format:
+                type: number
+                suffix: ' /s'
+                options:
+                  maximumFractionDigits: 1
+
+    - Playwright:
+        icon: mdi-google-chrome
+        href: https://playwright.cetex.dev/
+        description: Browserless Chromium
+        server: cetex
+        container: core_playwright
+
+    - Paštas:
+        icon: mdi-email
+        href: https://mail.cetex.dev/
+        description: docker-mailserver + Roundcube
+        server: cetex
+        container: mail_mailserver
+
+- Projektai:
+    - Pickzy:
+        icon: mdi-silverware-fork-knife
+        href: https://pickzy.app/
+        description: API · partneriai · landing · eilių Redis
+        server: cetex
+        container: pickzy_api
+        siteMonitor: https://api.pickzy.app/api/health
+        widgets:
+          - type: customapi
+            url: https://api.pickzy.app/api/health
+            refreshInterval: 60000
+            mappings:
+              - field: version
+                label: Versija
+              - field: checks.db.status
+                label: DB
+              - field: checks.redis.status
+                label: Redis
+              - field: checks.horizon.status
+                label: Eilės
+          - type: customapi
+            url: https://api.pickzy.app/api/health
+            refreshInterval: 60000
+            mappings:
+              - field: checks.wolt_last_sync.age_seconds
+                label: Wolt sync prieš
+                format: duration
+              - field: checks.bolt_last_sync.age_seconds
+                label: Bolt sync prieš
+                format: duration
+              - field: checks.wolt_freshness.status
+                label: Wolt meniu
+              - field: checks.bolt_freshness.status
+                label: Bolt meniu
+
+    - airsoftpunks.lt:
+        icon: mdi-web
+        href: https://airsoftpunks.lt/
+        server: cetex
+        container: airsoftpunks_airsoftpunks-web
+        siteMonitor: https://airsoftpunks.lt/
+
+    - baltela.lt:
+        icon: mdi-web
+        href: https://baltela.lt/
+        server: cetex
+        container: baltela_baltela-web
+        siteMonitor: https://baltela.lt/
+
+    - xheroes.agency:
+        icon: mdi-web
+        href: https://xheroes.agency/
+        description: app + discord-gateway
+        server: cetex
+        container: heroes_app
+        siteMonitor: https://xheroes.agency/
+
+    - lvl.mobi:
+        icon: mdi-web
+        href: https://lvl.mobi/
+        description: web + server
+        server: cetex
+        container: lvl_lvl-web
+        siteMonitor: https://lvl.mobi/
+
+    - zombiufabrikas.lt:
+        icon: mdi-web
+        href: https://zombiufabrikas.lt/
+        description: DNS rodo į 79.98.25.1, ne į šį serverį — sertifikatas neatsinaujina
+        server: cetex
+        container: zombiufabrikas_zombiufabrikas-web
+        siteMonitor: https://zombiufabrikas.lt/

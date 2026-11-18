@@ -141,6 +141,37 @@ entirely and the same message scores 0.00/11.
 
 **PTR:** set at serveriai.lt self-service for IP 176 → `mail.cetex.dev` (ideally matching HELO). Target mail-tester.com ≥8/10; below → hosted SMTP (Postmark/Mailgun) for OTP/password-reset. IP reputation warms over 3-6 weeks.
 
+## Admin tools: *.cetex.dev behind Cloudflare Access (2026-11-18)
+
+Every server tool (`traefik.`, `portainer.`, `adminer.`, `playwright.`, `prometheus.`, `grafana.`, `alerts.`, `logs.`, `home.cetex.dev`) sits behind **Cloudflare Access**: a sign-in page, and only addresses ending in `@pickzy.app` get through (the owner: "ne IP listas, o pvz. gali prisijungti tik žmonės su @pickzy.app"). The IP allowlist was a list nobody could keep: it held only the `.env.example` default `127.0.0.1/32`, so no browser had ever reached a tool.
+
+- **Cloudflare:** the `*.cetex.dev` wildcard A record is **proxied**. Zero Trust Free (≤ 50 users), team `cetex-dev.cloudflareaccess.com`. Access app „my-server įrankiai (*.cetex.dev)“ with policy „Tik @pickzy.app paštai“ (Allow, emails ending in `@pickzy.app`). The only login method is One-time PIN, a code mailed to the address, with instant auth; sessions last 24 h and one session covers every tool. SSL mode is **Full (strict)**: every proxied name has a real Let's Encrypt certificate, so Cloudflare must verify it.
+- **`cetex.dev`, `mail.` and `www.` stay DNS only.** The PTR of 176.223.132.42 is `cetex.dev`, and a proxied apex would resolve to Cloudflare and fail the mail FCrDNS check. So `cetex.dev` 302-redirects to `home.cetex.dev` (the `landing` stack) instead of being protected itself. A new tool under `*.cetex.dev` is behind Access automatically.
+- **Origin:** `ADMIN_WHITELIST_IPS` = Cloudflare's ranges (www.cloudflare.com/ips-v4 + ips-v6), so a tool answers only requests that came through Access. Direct access to 176.223.132.42 gets 403. A personal IP there does nothing, because the traffic arrives from Cloudflare. **Break-glass if Cloudflare/Access fails:** add your IP to `ADMIN_WHITELIST_IPS`, point the tool name at 176.223.132.42 in `/etc/hosts`, and redeploy core labels.
+- **Certificates: tools use `le-dns` (DNS-01), not `letsencrypt`.** An HTTP-01 request would meet the Access login page. The token „traefik-le-dns-natars.mobi“ (`CF_DNS_API_TOKEN`) covers natars.mobi **and** cetex.dev.
+  - Switching a router's resolver is not enough: Traefik does not ask the new resolver while ANY resolver holds a valid certificate for the name.
+  - So the old ones had to be deleted from `traefik/acme/acme.json`, followed by a Traefik restart. A backup is kept beside it as `acme.json.bak-20261118-before-le-dns`.
+- **Cloudflare proxy limits:**
+  - 100 MB request body (Free), so a large Adminer import or Portainer upload must go over SSH.
+  - 100 s origin timeout.
+- **Known: a Traefik restart breaks shared middlewares for ~15 s.** `admin-whitelist` and `rate-limit` are defined on Traefik's own service labels. Until its first provider refresh after a restart, every router that references them fails and falls to the catch-all, a 302 to cetex.dev. Seen on 2026-11-18 for airsoftpunks.lt, baltela.lt, lvl.mobi and mail.cetex.dev. Moving shared middlewares to a file provider would end it.
+
+### Dashboard: `home.cetex.dev` (`dashboard/` stack)
+
+[Homepage](https://gethomepage.dev) v2.8.0 shows:
+- server load, disk and uptime (node-exporter);
+- Traefik traffic and 5xx;
+- the soonest certificate expiry;
+- PostgreSQL size;
+- firing alerts;
+- every tool and project with its Swarm service status (through `core_socket-proxy`, read only);
+- each project's site monitor;
+- Pickzy's `/api/health`.
+
+It needs no docker.sock and no host mounts. Config files are swarm configs: after editing one, bump its `name:` version, then `./deploy.sh dashboard`. Homepage's own auth (v2) stays off, because Access is the gate.
+
+**Found while building it:** `zombiufabrikas.lt` resolves to 79.98.25.1, not this server, so its Let's Encrypt renewal fails (403 unauthorized) and its certificate expires around 2026-12-13. Either point the DNS back here or remove the stack.
+
 ## PostgreSQL tuning
 
 Custom `postgresql.conf` mounted via Swarm config. Tuned for 24GB RAM: `shared_buffers=4GB`, `effective_cache_size=12GB`, `work_mem=64MB`. Loaded via `postgres -c config_file=/etc/postgresql/postgresql.conf`.

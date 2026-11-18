@@ -1,7 +1,9 @@
 version: "3.8"
 
 # cetex.dev landing page + redirect'ai.
-# - cetex.dev            → mini HTML puslapis (nginx)
+# - cetex.dev            → 302 į https://home.cetex.dev (serverio dashboard'as, dashboard/ stack,
+#                          už Cloudflare Access). Pats cetex.dev lieka DNS only: PTR 176.223.132.42 →
+#                          cetex.dev, o proxied įrašas sulaužytų pašto FCrDNS patikrą.
 # - www.cetex.dev        → 301 į https://cetex.dev
 # - bare IP / nežinomas host → 302 į https://cetex.dev (catch-all, priority 1)
 #
@@ -28,7 +30,10 @@ services:
       labels:
         - traefik.enable=true
 
-        # --- cetex.dev landing ---
+        # --- cetex.dev → https://home.cetex.dev (index.html nebeberodomas, nginx lieka tik backend'u) ---
+        - traefik.http.middlewares.cetex-to-home.redirectregex.regex=^https?://cetex\.dev/(.*)
+        - traefik.http.middlewares.cetex-to-home.redirectregex.replacement=https://home.cetex.dev/$${1}
+        - traefik.http.routers.cetex-landing.middlewares=cetex-to-home
         - traefik.http.routers.cetex-landing.rule=Host(`cetex.dev`)
         - traefik.http.routers.cetex-landing.entrypoints=websecure
         - traefik.http.routers.cetex-landing.tls.certresolver=letsencrypt

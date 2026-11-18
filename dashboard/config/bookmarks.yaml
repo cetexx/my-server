@@ -1,0 +1,25 @@
+- Valdymas:
+    - Cloudflare:
+        - icon: si-cloudflare
+          href: https://dash.cloudflare.com/
+          description: DNS, SSL
+    - Zero Trust:
+        - icon: si-cloudflare
+          href: https://one.dash.cloudflare.com/
+          description: Access — kas gali prisijungti
+    - my-server:
+        - icon: si-github
+          href: https://github.com/cetexx/my-server
+          description: serverio infrastruktūra
+    - pickzy-app:
+        - icon: si-github
+          href: https://github.com/pickzy-app
+          description: Pickzy repozitorijos
+    - Sentry:
+        - icon: si-sentry
+          href: https://sentry.io/
+          description: klaidos
+    - Google Admin:
+        - icon: si-google
+          href: https://admin.google.com/
+          description: pickzy.app paštas, SMTP relay

@@ -1,0 +1,10 @@
+- greeting:
+    text_size: xl
+    text: cetex.dev · Rocky Linux 10.2 · 6 vCPU · 23 GB RAM · 296 GB · Docker Swarm
+
+- datetime:
+    locale: lt
+    format:
+      dateStyle: long
+      timeStyle: short
+      hour12: false

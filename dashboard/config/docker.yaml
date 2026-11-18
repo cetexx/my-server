@@ -1,0 +1,5 @@
+# Docker Swarm per socket-proxy (core stack, `internal` tinklas). Tik skaitymas: POST: 0.
+cetex:
+  host: core_socket-proxy
+  port: 2375
+  swarm: true

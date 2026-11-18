@@ -11,6 +11,7 @@ if [ -z "$STACK_PATH" ]; then
     echo "  core          - Traefik, PostgreSQL, Redis, Portainer, Adminer, Playwright, socket-proxy"
     echo "  monitoring    - Prometheus, Grafana, Node Exporter, cAdvisor, Dozzle"
     echo "  mail          - docker-mailserver, Roundcube"
+    echo "  dashboard     - home.cetex.dev (Homepage) — serverio būsena, įrankiai, projektai"
     echo "  all           - visi pagrindiniai stack'ai"
     exit 1
 fi

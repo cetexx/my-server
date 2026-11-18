@@ -1,0 +1,73 @@
+version: "3.8"
+
+# home.cetex.dev — serverio dashboard'as (gethomepage.dev): būsena, įrankiai, projektai.
+#
+# - Už Cloudflare Access (*.cetex.dev, prisijungia tik @pickzy.app paštai). Origin'as
+#   priima tik Cloudflare adresus (admin-whitelist = Cloudflare intervalai).
+# - cetex.dev (landing stack) nukreipia čia.
+# - Docker būsena — per core_socket-proxy (tik skaitymas, POST: 0), metrikos — iš
+#   Prometheus (`internal` tinklas). Jokio docker.sock ir jokių host mount'ų.
+# - Konfigūracija — swarm configs: pakeitus failą, PAKELK atitinkamo config'o `name`
+#   versiją (swarm configs nekeičiami), tada ./deploy.sh dashboard.
+
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v2.8.0
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: home.cetex.dev
+      LOG_TARGETS: stdout
+    configs:
+      - source: homepage-settings
+        target: /app/config/settings.yaml
+      - source: homepage-services
+        target: /app/config/services.yaml
+      - source: homepage-widgets
+        target: /app/config/widgets.yaml
+      - source: homepage-bookmarks
+        target: /app/config/bookmarks.yaml
+      - source: homepage-docker
+        target: /app/config/docker.yaml
+    networks:
+      - traefik-public
+      - internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 96M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.cetex-home.rule=Host(`home.cetex.dev`)
+        - traefik.http.routers.cetex-home.entrypoints=websecure
+        - traefik.http.routers.cetex-home.tls.certresolver=le-dns
+        - traefik.http.routers.cetex-home.middlewares=admin-whitelist
+        - traefik.http.services.cetex-home.loadbalancer.server.port=3000
+
+configs:
+  homepage-settings:
+    file: ./config/settings.yaml
+    name: homepage-settings-v1
+  homepage-services:
+    file: ./config/services.yaml
+    name: homepage-services-v1
+  homepage-widgets:
+    file: ./config/widgets.yaml
+    name: homepage-widgets-v1
+  homepage-bookmarks:
+    file: ./config/bookmarks.yaml
+    name: homepage-bookmarks-v1
+  homepage-docker:
+    file: ./config/docker.yaml
+    name: homepage-docker-v1
+
+networks:
+  traefik-public:
+    external: true
+  internal:
+    external: true

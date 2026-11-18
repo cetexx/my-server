@@ -1,0 +1,22 @@
+title: cetex.dev
+description: Serverio būsena, įrankiai ir projektai
+theme: dark
+color: slate
+headerStyle: boxedWidgets
+statusStyle: dot
+hideVersion: true
+disableIndexing: true
+
+layout:
+  Serveris:
+    style: row
+    columns: 3
+  Įrankiai:
+    style: row
+    columns: 3
+  Projektai:
+    style: row
+    columns: 3
+  Valdymas:
+    style: row
+    columns: 6
