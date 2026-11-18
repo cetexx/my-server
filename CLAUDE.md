@@ -147,7 +147,9 @@ Custom `postgresql.conf` mounted via Swarm config. Tuned for 24GB RAM: `shared_b
 
 ## Memory budget
 
-Total limits: ~11 GB out of 24 GB. ~11 GB free for projects, ~2 GB for OS/Docker.
+Limits (2026-11-18): core ~9.6 GB (PG 6G) + monitoring ~4.3 GB + mail 2 GB + projects ~4 GB ≈ 20 GB of 23 GB usable. Limits are caps, not usage — real usage is ~6 GB with ~17 GB available — but keep the sum under physical RAM so several services hitting their caps at once can't OOM the node.
+
+**A limit that is too tight is worse than none for the host.** A container pinned at its `memory` limit swaps (Docker gives every limited container swap equal to its limit — `memory.swap.max` = `memory.max` — and a stack file cannot change that) and its page cache thrashes. cAdvisor 0.60.6 at 256M (2026-11-06..11) was OOM-killed 676x and swapped ~2 TB, which put the whole host at 67% iowait and load 9 while RAM sat 17 GB free. Check `memory.events` (`max` counter) or the `OomKill` alert before blaming host size.
 
 ## Gotchas
 

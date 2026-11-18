@@ -28,7 +28,7 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 1G
+          memory: 2G      # 1G was ~940M used (head + mmapped TSDB), hit the limit 6.8k times in 7d
         reservations:
           memory: 256M
       labels:
@@ -81,7 +81,7 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 512M
+          memory: 1G      # 13.x sat at 507M of 512M
         reservations:
           memory: 128M
       labels:
@@ -111,6 +111,15 @@ services:
     # (/var/run/containerd/containerd.sock through the /var/run mount) — needed on Docker 29's
     # containerd image store; 0.52 produced no `name` label, so container alerts never fired.
     image: ghcr.io/google/cadvisor:v0.60.6
+    # With default flags 0.60.6 did not fit 256M: OOM-killed 676x on 2026-11-06..11 and swapped
+    # ~2 TB at the limit (iowait 67%, load 9) — the whole host crawled. So: Docker containers only
+    # (not every systemd cgroup), housekeeping at the scrape interval instead of every 1s, and the
+    # default --disable_metrics list + disk,diskIO (container_fs_*/blkio). Dashboards and alerts
+    # read only cpu, memory, network and container_last_seen — keep it that way or re-enable here.
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --disable_metrics=advtcp,cpu_topology,cpuset,disk,diskIO,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -122,7 +131,7 @@ services:
       mode: global
       resources:
         limits:
-          memory: 256M
+          memory: 512M
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.20.1
@@ -225,7 +234,7 @@ configs:
     name: prometheus-config-v2
   alert-rules:
     file: ./prometheus/alert-rules.yml
-    name: alert-rules-v3
+    name: alert-rules-v5
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
     name: alertmanager-config-v4

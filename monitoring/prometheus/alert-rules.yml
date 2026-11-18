@@ -33,10 +33,28 @@ groups:
         annotations:
           summary: "Kritiškai mažai disko vietos ({{ $value | printf \"%.1f\" }}% užimta)"
 
+      # Counts memcg kills too (a container at its memory limit). Nothing caught cAdvisor being
+      # OOM-killed 676x on 2026-11-06..11 — only a flood of ContainerDown for its own tasks.
+      - alert: OomKill
+        expr: increase(node_vmstat_oom_kill[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "OOM: kernelis per 10 min nužudė {{ $value | printf \"%.0f\" }} proc. (kas: journalctl -k | grep 'Killed process')"
+
   - name: containers
     rules:
+      # cAdvisor exports explicit timestamps, so a dead cAdvisor task's series linger for the 5 min
+      # lookback with an ageing last_seen. Only trust series from an instance with a fresh `up`
+      # sample, or every cAdvisor restart "kills" every container (fired for all 28-29 containers
+      # through the 2026-11-06..11 OOM loop and on the 2026-11-18 monitoring deploy).
       - alert: ContainerDown
-        expr: count by (name) (container_last_seen{name=~".+"} - time() < -60) > 0
+        expr: >-
+          count by (name) (
+            (container_last_seen{name=~".+"} - time() < -60)
+            and on (instance) (up{job="cadvisor"} == 1)
+            and on (instance) (time() - timestamp(up{job="cadvisor"}) < 60)
+          ) > 0
         for: 2m
         labels:
           severity: critical
@@ -51,13 +69,24 @@ groups:
         annotations:
           summary: "Konteineris {{ $labels.name }} naudoja daug CPU ({{ $value | printf \"%.1f\" }}%)"
 
+      # working_set = usage minus reclaimable inactive page cache. Plain usage made Prometheus
+      # (mmapped TSDB) and a freshly started Grafana (400M of cache) look like they were at the limit.
       - alert: ContainerHighMemory
-        expr: sum by (name) (container_memory_usage_bytes{name=~".+"}) / sum by (name) (container_spec_memory_limit_bytes{name=~".+"} > 0) * 100 > 90
+        expr: sum by (name) (container_memory_working_set_bytes{name=~".+"}) / sum by (name) (container_spec_memory_limit_bytes{name=~".+"} > 0) * 100 > 90
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Konteineris {{ $labels.name }} naudoja daug RAM ({{ $value | printf \"%.1f\" }}%)"
+
+      # ContainerDown ignores a cAdvisor that isn't scraped, so without this a dead cAdvisor is silent.
+      - alert: CadvisorDown
+        expr: absent(up{job="cadvisor"} == 1)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "cAdvisor nescrape'inamas 5 min — konteinerių alertai akli"
 
   - name: postgresql
     rules:

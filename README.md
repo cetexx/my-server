@@ -254,6 +254,8 @@ Alertai:
 | HighMemoryUsage | RAM >90% 5 min |
 | DiskSpaceLow / Critical | Disk >85% / >95% |
 | ContainerDown | Konteineris neatsako 2 min |
+| OomKill | Kernelis nužudė procesą dėl atminties (ir konteinerį, pasiekusį savo limitą) |
+| CadvisorDown | cAdvisor nescrape'inamas 5 min (be jo konteinerių alertai akli) |
 | PostgresqlDown | DB nepasiekiama 1 min |
 | PostgresqlTooManyConnections | >80% connection limito |
 | PostgresqlDeadlocks | Aptiktas deadlock |
@@ -264,11 +266,14 @@ Alertai automatiškai siunčiami email'u per Alertmanager → docker-mailserver.
 ## Memory alokacija
 
 ```
-Core:        1G (traefik) + 2G (pgsql) + 512M (redis) + 2G (playwright) + 64M (socket-proxy) ≈ 5.6 GB
-Monitoring:  1G (prom) + 512M (grafana) + 128M (node-exp) + 256M×4 (cadvisor/alertmgr/pg-exp/dozzle) ≈ 2.7 GB
+Core:        1G (traefik) + 6G (pgsql) + 512M (redis) + 2G (playwright) + 64M×2 (socket-proxy'ai) ≈ 9.6 GB
+Monitoring:  2G (prom) + 1G (grafana) + 512M (cadvisor) + 256M×3 (alertmgr/pg-exp/dozzle) ≈ 4.3 GB (node-exp be limito)
 Mail:        2G (mailserver v15 + Rspamd) + Roundcube webmail
 OS + Docker: ~2 GB
-Laisva:      ~12 GB projektams (po upgrade į 24 GB RAM)
+Projektai:   ~4 GB limitų (2026-11)
+```
+
+Limitų suma ~20 GB iš 23 GB — tai lubos, ne naudojimas: realiai visas serveris naudoja ~6 GB, laisva ~17 GB (2026-11-18).
 ```
 
 ## Cron
