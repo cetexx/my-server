@@ -6,11 +6,15 @@ global:
   # (`include:_spf.google.com`), tad SPF praeina ir sulygiuotas su From — DMARC pass.
   # Iki tol alertai ėjo per vietinį mail_mailserver iš alertmanager@cetex.dev, ir Gmail juos
   # atmetinėjo nuo 2026-11-09 (550-5.7.1 „very low reputation of the sending domain" — cAdvisor OOM
-  # ciklo alertų lavina, 2,992 atmetimai): nė vienas alertas neatėjo. EHLO — serverio PTR vardas.
+  # ciklo alertų lavina, 2,992 atmetimai): nė vienas alertas neatėjo.
   smtp_smarthost: 'smtp-relay.gmail.com:587'
   # Serverio, ne projekto adresas (owner'is, 2026-11-18: „siuntėjas turi būti alerts@cetex.dev").
   smtp_from: 'alerts@cetex.dev'
-  smtp_hello: 'cetex.dev'
+  # Relay'us, tikrindamas pagal IP, Workspace paskyrą atpažįsta iš HELO arba MAIL FROM domeno, o
+  # cetex.dev — ne Workspace domenas: su HELO cetex.dev buvo „550 5.7.0 Mail relay denied … Invalid
+  # credentials for relay for one of the domains in: cetex.dev (as obtained from HELO and MAIL FROM)".
+  # Todėl HELO įvardija paskyrą, kurios relay'us tai yra; matomas siuntėjas lieka alerts@cetex.dev.
+  smtp_hello: 'pickzy.app'
   smtp_require_tls: true
 
 route:

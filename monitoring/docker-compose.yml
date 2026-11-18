@@ -242,7 +242,7 @@ configs:
     name: alert-rules-v6
   alertmanager-config:
     file: ./alertmanager/alertmanager.yml
-    name: alertmanager-config-v8
+    name: alertmanager-config-v9
   grafana-datasource:
     file: ./grafana/provisioning/datasources/datasource.yml
     name: grafana-datasource-v2
