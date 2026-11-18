@@ -1,12 +1,15 @@
 global:
   # Per Google Workspace SMTP relay (2026-11-18). pickzy.app Workspace'as priima šį serverį pagal IP
   # (Admin → Gmail → Routing → SMTP relay service „my-server alerts (176.223.132.42)": tik šis IP,
-  # tik siuntėjai @pickzy.app, privalomas TLS) ir laišką pristato Google viduje. Iki tol alertai ėjo
-  # per vietinį mail_mailserver iš alertmanager@cetex.dev, ir Gmail juos atmetinėjo nuo 2026-11-09
-  # (550-5.7.1 „very low reputation of the sending domain" — cAdvisor OOM ciklo alertų lavina,
-  # 2,992 atmetimai): nė vienas alertas neatėjo. EHLO — serverio PTR vardas, ne „localhost".
+  # privalomas TLS, siuntėjas — bet koks („Any addresses"), nes serverio siuntėjas yra cetex.dev, ne
+  # Workspace'o domenas) ir laišką pristato Google viduje. cetex.dev SPF leidžia Google
+  # (`include:_spf.google.com`), tad SPF praeina ir sulygiuotas su From — DMARC pass.
+  # Iki tol alertai ėjo per vietinį mail_mailserver iš alertmanager@cetex.dev, ir Gmail juos
+  # atmetinėjo nuo 2026-11-09 (550-5.7.1 „very low reputation of the sending domain" — cAdvisor OOM
+  # ciklo alertų lavina, 2,992 atmetimai): nė vienas alertas neatėjo. EHLO — serverio PTR vardas.
   smtp_smarthost: 'smtp-relay.gmail.com:587'
-  smtp_from: 'alerts@pickzy.app'
+  # Serverio, ne projekto adresas (owner'is, 2026-11-18: „siuntėjas turi būti alerts@cetex.dev").
+  smtp_from: 'alerts@cetex.dev'
   smtp_hello: 'cetex.dev'
   smtp_require_tls: true
 
@@ -30,8 +33,7 @@ receivers:
       # sarunas@pickzy.app — the owner's one address for every alert (2026-11-18). Gmail has
       # rejected mail from cetex.dev since 2026-11-09 (550-5.7.1, "very low reputation of the
       # sending domain": the cAdvisor OOM loop's alert storm, 2,992 bounces), so the gmail.com
-      # recipients got nothing and each refusal kept the reputation down; they are gone. For
-      # pickzy.app the Workspace email allowlist carries 176.223.132.42.
+      # recipients got nothing and each refusal kept the reputation down; they are gone.
       - to: 'sarunas@pickzy.app'
         send_resolved: true
         headers:
