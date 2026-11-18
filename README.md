@@ -253,7 +253,8 @@ Alertai:
 | HighCpuUsage | CPU >85% 5 min |
 | HighMemoryUsage | RAM >90% 5 min |
 | DiskSpaceLow / Critical | Disk >85% / >95% |
-| ContainerDown | Konteineris neatsako 2 min |
+| ContainerDown | Servisas neturi nė vieno veikiančio konteinerio 3 min (deploy pakeisti konteineriai nebeskaičiuojami) |
+| ContainerRestarting | Servisas per 15 min pakeitė >3 konteinerius — lūžinėja |
 | OomKill | Kernelis nužudė procesą dėl atminties (ir konteinerį, pasiekusį savo limitą) |
 | CadvisorDown | cAdvisor nescrape'inamas 5 min (be jo konteinerių alertai akli) |
 | PostgresqlDown | DB nepasiekiama 1 min |

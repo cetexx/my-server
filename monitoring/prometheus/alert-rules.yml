@@ -44,22 +44,48 @@ groups:
 
   - name: containers
     rules:
-      # cAdvisor exports explicit timestamps, so a dead cAdvisor task's series linger for the 5 min
-      # lookback with an ageing last_seen. Only trust series from an instance with a fresh `up`
-      # sample, or every cAdvisor restart "kills" every container (fired for all 28-29 containers
-      # through the 2026-11-06..11 OOM loop and on the 2026-11-18 monitoring deploy).
+      # A SERVICE with no running container — not a container a deploy retired. Per container (the
+      # rule until 2026-11-18), every rolling update mailed "ContainerDown" for the task it replaced:
+      # cAdvisor exports explicit timestamps, so a stopped container's series lingers for the 5-min
+      # lookback with an ageing last_seen (the alertmanager reload of 2026-11-18 14:36 did exactly
+      # that). Now: services seen in the lookback, unless one of their containers is fresh. Series are
+      # trusted only from a freshly scraped cAdvisor, or every cAdvisor restart "kills" every service
+      # (fired for all 28-29 containers through the 2026-11-06..11 OOM loop). A service removed on
+      # purpose (`docker stack rm`) ages out of the lookback before `for` runs out.
       - alert: ContainerDown
         expr: >-
-          count by (name) (
-            (container_last_seen{name=~".+"} - time() < -60)
-            and on (instance) (up{job="cadvisor"} == 1)
-            and on (instance) (time() - timestamp(up{job="cadvisor"}) < 60)
-          ) > 0
-        for: 2m
+          (
+            count by (container_label_com_docker_swarm_service_name) (
+              container_last_seen{container_label_com_docker_swarm_service_name!=""}
+            )
+            unless
+            count by (container_label_com_docker_swarm_service_name) (
+              time() - container_last_seen{container_label_com_docker_swarm_service_name!=""} < 60
+            )
+          )
+          and on () (up{job="cadvisor"} == 1)
+          and on () (time() - timestamp(up{job="cadvisor"}) < 60)
+        for: 3m
         labels:
           severity: critical
         annotations:
-          summary: "Konteineris {{ $labels.name }} numirė"
+          summary: "Servisas {{ $labels.container_label_com_docker_swarm_service_name }} neturi nė vieno veikiančio konteinerio"
+
+      # A service whose containers keep dying and being replaced — what the per-service ContainerDown
+      # cannot see, since each fresh replacement counts as running. A deploy retires one container
+      # per service (two names in the window); more than three in 15 min is a crash loop.
+      - alert: ContainerRestarting
+        expr: >-
+          count by (container_label_com_docker_swarm_service_name) (
+            count by (container_label_com_docker_swarm_service_name, name) (
+              last_over_time(container_last_seen{container_label_com_docker_swarm_service_name!=""}[15m])
+            )
+          ) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Servisas {{ $labels.container_label_com_docker_swarm_service_name }} per 15 min pakeitė {{ $value | printf \"%.0f\" }} konteinerius — lūžinėja"
 
       - alert: ContainerHighCpu
         expr: sum by (name) (rate(container_cpu_usage_seconds_total{name=~".+"}[5m])) * 100 > 80
