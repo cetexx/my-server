@@ -4,6 +4,10 @@ set -euo pipefail
 # =============================================
 # Admin tools IP whitelist valdymas
 # =============================================
+#
+# NUO 2026-11-18 prod'e sąraše — Cloudflare intervalai: įrankiai už Cloudflare Access
+# (*.cetex.dev proxied), tad asmeninis IP (`myip`) nieko neduoda, nebent break-glass'ui
+# kartu su /etc/hosts → 176.223.132.42. Žr. CLAUDE.md → "Admin tools".
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/../.env"
