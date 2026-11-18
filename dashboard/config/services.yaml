@@ -58,7 +58,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: 5xx
               query: 'sum(rate(traefik_entrypoint_requests_total{entrypoint="websecure",code=~"5.."}[5m])) or vector(0)'
@@ -327,7 +327,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: API atsakas
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="pickzy-api@swarm"}[5m])) / sum(rate(traefik_service_request_duration_seconds_count{service="pickzy-api@swarm"}[5m]))'
@@ -440,7 +440,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: Atsakas (1 h)
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="airsoftpunks-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="airsoftpunks-web@swarm"}[1h]))'
@@ -542,7 +542,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: Atsakas (1 h)
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="baltela-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="baltela-web@swarm"}[1h]))'
@@ -644,7 +644,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: Atsakas (1 h)
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="heroes@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="heroes@swarm"}[1h]))'
@@ -765,7 +765,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: Atsakas (1 h)
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="lvl-api@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="lvl-api@swarm"}[1h]))'
@@ -886,7 +886,7 @@
               format:
                 type: number
                 options:
-                  maximumFractionDigits: 1
+                  maximumFractionDigits: 2
                 suffix: ' /s'
             - label: Atsakas (1 h)
               query: '1000 * sum(rate(traefik_service_request_duration_seconds_sum{service="zombiufabrikas-web@swarm"}[1h])) / sum(rate(traefik_service_request_duration_seconds_count{service="zombiufabrikas-web@swarm"}[1h]))'

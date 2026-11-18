@@ -67,7 +67,7 @@ configs:
     name: homepage-settings-v2
   homepage-services:
     file: ./config/services.yaml
-    name: homepage-services-v2
+    name: homepage-services-v3
   homepage-widgets:
     file: ./config/widgets.yaml
     name: homepage-widgets-v1
@@ -80,7 +80,7 @@ configs:
   # Meniu „Projektai ▾“ ir fonas (Homepage oficialus custom.css / custom.js).
   homepage-custom-css:
     file: ./config/custom.css
-    name: homepage-custom-css-v1
+    name: homepage-custom-css-v2
   homepage-custom-js:
     file: ./config/custom.js
     name: homepage-custom-js-v2

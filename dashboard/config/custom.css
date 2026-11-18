@@ -13,6 +13,13 @@
   display: none;
 }
 
+/* Tab juosta virš kortelių: jų backdrop-blur kuria savo sluoksnius, ir be šito iškritęs meniu
+   atsidurtų PO kortelėmis. */
+#myTab {
+  position: relative;
+  z-index: 40;
+}
+
 #myTab > li.cetex-projects {
   position: relative;
 }
