@@ -2,8 +2,10 @@ global:
   # Per Google Workspace SMTP relay (2026-11-18). pickzy.app Workspace'as priima šį serverį pagal IP
   # (Admin → Gmail → Routing → SMTP relay service „my-server alerts (176.223.132.42)": tik šis IP,
   # privalomas TLS, siuntėjas — bet koks („Any addresses"), nes serverio siuntėjas yra cetex.dev, ne
-  # Workspace'o domenas) ir laišką pristato Google viduje. cetex.dev SPF leidžia Google
-  # (`include:_spf.google.com`), tad SPF praeina ir sulygiuotas su From — DMARC pass.
+  # Workspace'o domenas) ir laišką pristato Google viduje — į Inbox. Relay'us vokelio siuntėją
+  # perrašo į postmaster@pickzy.app: SPF praeina pickzy.app vardu, DKIM nėra, o cetex.dev DMARC —
+  # FAIL, tik politika `p=none`, tad laiškas pristatomas. NEKELTI cetex.dev DMARC į quarantine /
+  # reject, kol alertai eina šiuo keliu — jie atsidurtų spam'e arba būtų atmesti.
   # Iki tol alertai ėjo per vietinį mail_mailserver iš alertmanager@cetex.dev, ir Gmail juos
   # atmetinėjo nuo 2026-11-09 (550-5.7.1 „very low reputation of the sending domain" — cAdvisor OOM
   # ciklo alertų lavina, 2,992 atmetimai): nė vienas alertas neatėjo.
