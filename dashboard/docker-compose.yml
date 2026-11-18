@@ -2,7 +2,7 @@ version: "3.8"
 
 # home.cetex.dev — serverio dashboard'as (gethomepage.dev): būsena, įrankiai, projektai.
 #
-# - Už Cloudflare Access (*.cetex.dev, prisijungia tik @pickzy.app paštai). Origin'as
+# - Už Cloudflare Access (*.cetex.dev, kodas el. paštu, tik leidžiami adresai). Origin'as
 #   priima tik Cloudflare adresus (admin-whitelist = Cloudflare intervalai).
 # - cetex.dev (landing stack) nukreipia čia.
 # - Docker būsena — per core_socket-proxy (tik skaitymas, POST: 0), metrikos — iš
