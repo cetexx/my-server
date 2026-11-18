@@ -27,8 +27,13 @@ services:
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
       - --certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      # ANTRAS sprendiklis — DNS-01 per Cloudflare, TIK wildcard sertifikatams.
-      # Esamas `letsencrypt` (HTTP-01) NELIEČIAMAS: visi kiti projektai lieka ant jo.
+      # ANTRAS sprendiklis — DNS-01 per Cloudflare: wildcard sertifikatams IR serverio
+      # įrankiams (*.cetex.dev). Esamas `letsencrypt` (HTTP-01) NELIEČIAMAS: visi kiti
+      # projektai lieka ant jo.
+      #
+      # Įrankiai — už Cloudflare Access (2026-11-18): HTTP-01 užklausą Access nukreiptų į
+      # prisijungimo puslapį ir sertifikatas nebeatsinaujintų. DNS-01 HTTP nenaudoja.
+      # Raktas (CF_DNS_API_TOKEN, „traefik-le-dns-natars.mobi“) mato natars.mobi IR cetex.dev.
       #
       # Kodėl reikėjo: HTTP-01 wildcard sertifikato neišduoda iš principo, o
       # natars.mobi pasauliai gyvena po `sN.` subdomenais. Be `*.natars.mobi`
@@ -111,7 +116,7 @@ services:
         # Dashboard
         - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN}`)
         - traefik.http.routers.traefik-dashboard.entrypoints=websecure
-        - traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt
+        - traefik.http.routers.traefik-dashboard.tls.certresolver=le-dns
         - traefik.http.routers.traefik-dashboard.service=api@internal
         - traefik.http.routers.traefik-dashboard.middlewares=admin-whitelist
         - traefik.http.services.traefik-dashboard.loadbalancer.server.port=8080
@@ -289,7 +294,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.portainer.rule=Host(`portainer.${DOMAIN}`)
         - traefik.http.routers.portainer.entrypoints=websecure
-        - traefik.http.routers.portainer.tls.certresolver=letsencrypt
+        - traefik.http.routers.portainer.tls.certresolver=le-dns
         - traefik.http.routers.portainer.middlewares=admin-whitelist
         - traefik.http.services.portainer.loadbalancer.server.port=9000
 
@@ -312,7 +317,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.adminer.rule=Host(`adminer.${DOMAIN}`)
         - traefik.http.routers.adminer.entrypoints=websecure
-        - traefik.http.routers.adminer.tls.certresolver=letsencrypt
+        - traefik.http.routers.adminer.tls.certresolver=le-dns
         - traefik.http.routers.adminer.middlewares=admin-whitelist
         - traefik.http.services.adminer.loadbalancer.server.port=8080
 
@@ -351,7 +356,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.playwright.rule=Host(`playwright.${DOMAIN}`)
         - traefik.http.routers.playwright.entrypoints=websecure
-        - traefik.http.routers.playwright.tls.certresolver=letsencrypt
+        - traefik.http.routers.playwright.tls.certresolver=le-dns
         - traefik.http.routers.playwright.middlewares=admin-whitelist
         - traefik.http.services.playwright.loadbalancer.server.port=3000
 

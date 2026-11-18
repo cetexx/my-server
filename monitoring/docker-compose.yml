@@ -38,7 +38,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)
         - traefik.http.routers.prometheus.entrypoints=websecure
-        - traefik.http.routers.prometheus.tls.certresolver=letsencrypt
+        - traefik.http.routers.prometheus.tls.certresolver=le-dns
         - traefik.http.routers.prometheus.middlewares=admin-whitelist
         - traefik.http.services.prometheus.loadbalancer.server.port=9090
 
@@ -91,7 +91,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)
         - traefik.http.routers.grafana.entrypoints=websecure
-        - traefik.http.routers.grafana.tls.certresolver=letsencrypt
+        - traefik.http.routers.grafana.tls.certresolver=le-dns
         - traefik.http.routers.grafana.middlewares=admin-whitelist
         - traefik.http.services.grafana.loadbalancer.server.port=3000
 
@@ -183,7 +183,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.alertmanager.rule=Host(`alerts.${DOMAIN}`)
         - traefik.http.routers.alertmanager.entrypoints=websecure
-        - traefik.http.routers.alertmanager.tls.certresolver=letsencrypt
+        - traefik.http.routers.alertmanager.tls.certresolver=le-dns
         - traefik.http.routers.alertmanager.middlewares=admin-whitelist
         - traefik.http.services.alertmanager.loadbalancer.server.port=9093
 
@@ -223,7 +223,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.dozzle.rule=Host(`logs.${DOMAIN}`)
         - traefik.http.routers.dozzle.entrypoints=websecure
-        - traefik.http.routers.dozzle.tls.certresolver=letsencrypt
+        - traefik.http.routers.dozzle.tls.certresolver=le-dns
         - traefik.http.routers.dozzle.middlewares=admin-whitelist
         - traefik.http.services.dozzle.loadbalancer.server.port=8080
 
