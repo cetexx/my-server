@@ -7,6 +7,9 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
+      # The address alert mails link to ("Source"). Without it Prometheus names itself by its
+      # container id (http://8adeb13b4ebd:9090/graph?… in the 2026-11-18 mails) — no reader can open that.
+      - --web.external-url=https://prometheus.${DOMAIN}
       - --web.enable-lifecycle
     volumes:
       - /opt/my-server/prometheus/data:/prometheus
@@ -155,6 +158,8 @@ services:
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
+      # The address alert mails link to ("View in Alertmanager"), not the container id.
+      - --web.external-url=https://alerts.${DOMAIN}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/-/healthy"]
       interval: 30s
