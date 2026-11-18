@@ -52,6 +52,14 @@ services:
         - traefik.http.routers.cetex-home.tls.certresolver=le-dns
         - traefik.http.routers.cetex-home.middlewares=admin-whitelist
         - traefik.http.services.cetex-home.loadbalancer.server.port=3000
+        # custom.css / custom.js: Homepage siunčia juos su max-age=14400, tad pakeitimas naršyklėje
+        # pasirodytų tik po 4 val. Tik šiems failams — no-cache (ilgesnė taisyklė laimi prioritetu).
+        - traefik.http.middlewares.cetex-home-nocache.headers.customresponseheaders.Cache-Control=no-cache
+        - traefik.http.routers.cetex-home-custom.rule=Host(`home.cetex.dev`) && PathPrefix(`/api/config/custom`)
+        - traefik.http.routers.cetex-home-custom.entrypoints=websecure
+        - traefik.http.routers.cetex-home-custom.tls.certresolver=le-dns
+        - traefik.http.routers.cetex-home-custom.middlewares=admin-whitelist,cetex-home-nocache
+        - traefik.http.routers.cetex-home-custom.service=cetex-home
 
 configs:
   homepage-settings:
@@ -75,7 +83,7 @@ configs:
     name: homepage-custom-css-v1
   homepage-custom-js:
     file: ./config/custom.js
-    name: homepage-custom-js-v1
+    name: homepage-custom-js-v2
 
 networks:
   traefik-public:

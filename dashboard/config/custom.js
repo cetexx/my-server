@@ -24,9 +24,10 @@
     root.querySelector(".cetex-projects-button").setAttribute("aria-expanded", "false");
   }
 
-  function mount(list, firstProject) {
+  function mount(list, firstProject, mainTab) {
     const root = document.createElement("li");
-    root.className = "cetex-projects " + firstProject.parentElement.className;
+    // Look like a Homepage tab item: borrow a main tab's <li> classes (never a hidden project's).
+    root.className = "cetex-projects " + (mainTab ? mainTab.parentElement.className : "");
     root.setAttribute("role", "presentation");
 
     const button = document.createElement("button");
@@ -62,9 +63,10 @@
     const projects = buttons.filter(isProject);
     if (!projects.length) return;
 
-    for (const project of projects) project.parentElement.classList.add("cetex-project-tab");
+    const mainTab = buttons.find((candidate) => !isProject(candidate));
+    const root = list.querySelector(":scope > li.cetex-projects") || mount(list, projects[0], mainTab);
 
-    const root = list.querySelector(":scope > li.cetex-projects") || mount(list, projects[0]);
+    for (const project of projects) project.parentElement.classList.add("cetex-project-tab");
     const button = root.querySelector(".cetex-projects-button");
     const panel = root.querySelector(".cetex-projects-panel");
 
