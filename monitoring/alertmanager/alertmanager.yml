@@ -23,7 +23,9 @@ route:
 receivers:
   - name: 'email'
     email_configs:
-      - to: 'sarunas.pm@gmail.com, cetex.pm@gmail.com'
+      # sarunas@pickzy.app is the owner's address for every alert (2026-11-18). pickzy.app
+      # mail is Google Workspace, so it arrives even while this server's mailserver is down.
+      - to: 'sarunas@pickzy.app, sarunas.pm@gmail.com, cetex.pm@gmail.com'
         send_resolved: true
         headers:
           Subject: '{{ if eq .Status "firing" }}[ALERT] {{ .CommonLabels.alertname }}{{ else }}[OK] {{ .CommonLabels.alertname }}{{ end }}'
