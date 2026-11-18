@@ -78,7 +78,7 @@ The short `<service>` alias is registered on the SHARED external `internal` netw
 ## Environment variables
 
 All in `.env` (copied from `.env.example`). Key vars:
-- `DOMAIN` — base domain, used for all Traefik routing and SSL
+- `DOMAIN` — the SERVER's own domain (`cetex.dev`) for the admin tools' Traefik routes and certificates. Never a project's domain: this server hosts several projects
 - `ADMIN_WHITELIST_IPS` — comma-separated CIDR list for admin tool access
 - `POSTGRES_USER/PASSWORD` — admin DB credentials
 - `PLAYWRIGHT_TOKEN` — API token for browserless/chromium
@@ -94,7 +94,7 @@ All in `scripts/`. Main entry point is `./server.sh` which routes subcommands to
 
 ### Mail (docker-mailserver v15 + Rspamd)
 
-`MAIL_DOMAIN` in `.env` (= `cetex.dev`) is the mailserver identity — SEPARATE from `DOMAIN` (`pickzy.app`, whose mail is on Google Workspace). Mailserver FQDN + webmail = `mail.cetex.dev`. One instance serves all project domains, each fully independent (own DKIM/MX/SPF/mailboxes).
+`DOMAIN` in `.env` is `cetex.dev` (since 2026-11-18; it was `pickzy.app`, so every admin tool lived under one project's domain — the owner: "my-server gali turėti daugiau projektų, tai nėra vien pickzy projekto serveris"). The tools are `traefik.`, `portainer.`, `adminer.`, `playwright.`, `prometheus.`, `grafana.`, `alerts.` and `logs.cetex.dev`; `*.cetex.dev` is a DNS-only wildcard A record → 176.223.132.42 in Cloudflare, so a new tool needs no DNS change and Traefik issues its certificate by HTTP-01. Service labels change without a task restart: moving the routers restarted nothing, Traefik included. `MAIL_DOMAIN` in `.env` (= `cetex.dev`) is the mailserver identity. Mailserver FQDN + webmail = `mail.cetex.dev`. One instance serves all project domains, each fully independent (own DKIM/MX/SPF/mailboxes).
 
 **Sending IP = 176 (the host default), NOT a dedicated IP** (learned the hard way 2026-07-21). Docker Swarm overlay containers egress via the host's *default route* IP (176); forcing a second IP (212) via SNAT fights Docker+firewalld iptables reconciliation and is unreliable — tried and reverted. So SPF and PTR must reference **176**. True per-IP mail isolation would need a standalone host-networked mailserver *outside* Swarm.
 
@@ -159,6 +159,7 @@ Limits (2026-11-18): core ~9.6 GB (PG 6G) + monitoring ~4.3 GB + mail 2 GB + pro
 - Health checks use container-level commands (not Swarm-level) — they trigger container restarts, not service rescheduling
 - Rocky Linux has SELinux enabled — Docker volumes need `svirt_sandbox_file_t` context (handled by `setup.sh`)
 - `alertmanager.yml` sends as `smtp_from: alertmanager@cetex.dev` (2026-11-06; was `@pickzy.app`, whose SPF is Google-only and has no Rspamd DKIM key here, so every alert failed DMARC). Docker configs don't substitute env vars, so the address is hardcoded — change it there if the mail domain ever changes.
+- **A config-only redeploy:** `cd <stack>; set -a; . ../.env; set +a; docker stack deploy --resolve-image changed -c docker-compose.yml <stack>`. `changed` asks the registry only for services whose image tag changed, so the unchanged ones keep their pinned digests — the Docker Hub rewrite that restarted PostgreSQL and Traefik on 2026-11-06 cannot happen. Used for the cetex.dev move on 2026-11-18.
 - **NEVER** deploy manually with `source .env && docker stack deploy` — `source` doesn't export, so compose sees empty `${DOMAIN}` / `${POSTGRES_*}` / `${GRAFANA_DB_PASSWORD}` and the stack comes up mis-wired (this took down `core_postgresql` and broke Grafana DB auth on 2026-07-21). **Always** use `./deploy.sh <stack>` — it does `set -a; source; set +a` correctly.
 
 ## Language
