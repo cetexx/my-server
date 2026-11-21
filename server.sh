@@ -21,6 +21,7 @@ STATUSAS:
 
 DUOMBAZĖS:
   db create <name> [limit]    Sukurk naują izoliuotą DB
+  db limit <name> <limit>     Pakeisk esamos rolės connection limitą (saugo ≤195 sumą)
   db list                     Visos DB, dydžiai, prisijungimai
   db delete <name>            Ištrink DB (su patvirtinimu)
   db backup [name]            Backup'ink DB (visas arba konkrečią)
@@ -91,11 +92,12 @@ case "${1:-}" in
     db)
         case "${2:-}" in
             create) "$SCRIPT_DIR/scripts/db-create.sh" "${@:3}" ;;
+            limit)  "$SCRIPT_DIR/scripts/db-limit.sh" "${@:3}" ;;
             list)   "$SCRIPT_DIR/scripts/db-list.sh" ;;
             delete) "$SCRIPT_DIR/scripts/db-delete.sh" "${@:3}" ;;
             backup) "$SCRIPT_DIR/scripts/backup.sh" db "${@:3}" ;;
             *)
-                echo "Naudojimas: ./server.sh db <create|list|delete|backup>"
+                echo "Naudojimas: ./server.sh db <create|limit|list|delete|backup>"
                 exit 1
                 ;;
         esac
